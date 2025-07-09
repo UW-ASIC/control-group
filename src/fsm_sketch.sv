@@ -1,3 +1,4 @@
+`default_nettype none
 `include "common.sv"
 
 module fsm_sketch #(
@@ -98,7 +99,7 @@ module fsm_sketch #(
             req.valid <= 0;
             case (state)
                 READ_KEY: begin
-                    if(!waiting_for_ack & mem_ready & accel_ready & !arb_won) begin
+                    if(!waiting_for_ack & mem_ready & accel_ready) begin
                         req.addr <= cpu_req_key_addr;
                         req.width <= TODO; //whatever encoding is our key encoding
                         //let scoreboard fill in our dest maybe? :eyes:
@@ -110,7 +111,7 @@ module fsm_sketch #(
                     if(arb_won) waiting_for_ack <= 1;
                 end
                 READ_TEXT: begin
-                    if(!waiting_for_ack & mem_ready & !arb_won) begin //we've now claimed an accelerator, remove it from our list
+                    if(!waiting_for_ack & mem_ready ) begin //we've now claimed an accelerator, remove it from our list
                         req.addr <= cpu_req_text_addr;
                         req.width <= cpu_req_text_width; //whatever encoding is our key encoding
                         //let scoreboard fill in our dest maybe? :eyes:
@@ -122,7 +123,7 @@ module fsm_sketch #(
                     if(arb_won) waiting_for_ack <= 1;
                 end
                 EXECUTE: begin
-                    if(!waiting_for_ack & !arb_won) begin
+                    if(!waiting_for_ack) begin
                         req.source_id <= OUR_SRC_ID;
                         req.opcode <= $cpu_opcode2accel_opcode(cpu_req_opcode); //idk get some big declaration global table in here :)
                         req.valid <= 1;
@@ -131,7 +132,7 @@ module fsm_sketch #(
                     if(arb_won) waiting_for_ack <= 1;
                 end
                 ADDR2MEM: begin
-                    if(!waiting_for_ack & mem_ready & !arb_won) begin
+                    if(!waiting_for_ack & mem_ready) begin
                         req.addr <= cpu_req_text_addr;
                         //let scoreboard fill in our dest maybe? :eyes:
                         req.source_id <= OUR_SRC_ID;
@@ -142,7 +143,7 @@ module fsm_sketch #(
                     if(arb_won) waiting_for_ack <= 1;
                 end
                 DATA2MEM: begin
-                    if(!waiting_for_ack & !arb_won) begin //does not depend on mem_ready as we hold the memory resource from prev.
+                    if(!waiting_for_ack) begin //does not depend on mem_ready as we hold the memory resource from prev.
                         //let scoreboard fill in our dest maybe? :eyes:
                         //let dest field in this req be the memory ID
                         req.source_id <= OUR_SRC_ID;
