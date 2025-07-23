@@ -45,16 +45,35 @@ module fsm_sketch #(
     state_t state, next_state;
 
     always_comb begin //combinational logic for state transitions
-        next_state = state;
-
         case (state)
-            IDLE: if (cpu_req.valid) next_state = READ_KEY;
-            READ_KEY: if (ack) next_state = READ_TEXT;
-            READ_TEXT: if (ack) next_state = EXECUTE;
-            EXECUTE: if (ack) next_state = ADDR2MEM;
-            ADDR2MEM: if (ack) next_state = DATA2MEM; //let these 2 packets go in parallel and fight it out :)), but needs a way to track 2 acks
-            DATA2MEM: if (ack) next_state = COMPLETE;
-            COMPLETE: if (serializer_arb_won) next_state = IDLE;
+            IDLE: begin 
+                if (cpu_req.valid) next_state = READ_KEY;
+                else next_state = IDLE;
+            end
+            READ_KEY: begin
+                if (ack) next_state = READ_TEXT;
+                else next_state = READ_KEY;
+            end
+            READ_TEXT: begin 
+                if (ack) next_state = EXECUTE;
+                else next_state = READ_TEXT;
+            end
+            EXECUTE: begin 
+                if (ack) next_state = ADDR2MEM;
+                else next_state = EXECUTE;
+            end
+            ADDR2MEM: begin 
+                if (ack) next_state = DATA2MEM; //let these 2 packets go in parallel and fight it out :)), but needs a way to track 2 acks
+                else next_state = ADDR2MEM;
+            end
+            DATA2MEM: begin
+                if (ack) next_state = COMPLETE;
+                else next_state = DATA2MEM;
+            end
+            COMPLETE: begin 
+                if (serializer_arb_won) next_state = IDLE;
+                else next_state = COMPLETE;
+            end
             default: ;
         endcase
     end
@@ -65,7 +84,7 @@ module fsm_sketch #(
     logic [CPU_OPCODE_W-1:0] cpu_req_opcode;
 
     always_ff @( posedge clk ) begin //clock in request on idle -> not transition
-        if(!rst_n) begin
+        if(~rst_n) begin
             cpu_req_text_addr <= 0;
             cpu_req_text_width <= 0;
             cpu_req_key_addr <= 0;
@@ -85,7 +104,7 @@ module fsm_sketch #(
     reg waiting_for_ack;
 
     always_ff @( posedge clk ) begin //to arbiter (req)
-        if(!rst_n) begin
+        if(~rst_n) begin
             req.addr <= 0;
             req.width <= 0;
             req.dest <= 0;
@@ -97,6 +116,9 @@ module fsm_sketch #(
         end else begin
             if (ack) waiting_for_ack <= 0;
             req.valid <= 0;
+            req_complete_valid <= 0;
+            req_complete_address <= 0;
+            req_complete_source_id <= 0;
             case (state)
                 READ_KEY: begin
                     if(!waiting_for_ack & mem_ready) begin
@@ -165,7 +187,7 @@ module fsm_sketch #(
     end
 
     always_ff @( posedge clk ) begin //increment state machine
-        if(!rst_n) begin
+        if(~rst_n) begin
             state <= IDLE;
         end else begin
             state <= next_state;
