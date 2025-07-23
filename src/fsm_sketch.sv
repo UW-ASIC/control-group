@@ -16,7 +16,7 @@ module fsm_sketch #(
 
     output logic ready_for_req, //to req queue
 
-    input wire accel_ready, //from scoreboard
+    // input wire accel_ready, //from scoreboard -> don't need this as static mapping!
     input wire mem_ready,
 
     input wire ack, //from arbiter/sourceID matcher/idk yet
@@ -99,7 +99,7 @@ module fsm_sketch #(
             req.valid <= 0;
             case (state)
                 READ_KEY: begin
-                    if(!waiting_for_ack & mem_ready & accel_ready) begin
+                    if(!waiting_for_ack & mem_ready) begin
                         req.addr <= cpu_req_key_addr;
                         req.width <= TODO; //whatever encoding is our key encoding
                         //let scoreboard fill in our dest maybe? :eyes:
@@ -125,7 +125,7 @@ module fsm_sketch #(
                 EXECUTE: begin
                     if(!waiting_for_ack) begin
                         req.source_id <= OUR_SRC_ID;
-                        req.opcode <= $cpu_opcode2accel_opcode(cpu_req_opcode); //idk get some big declaration global table in here :)
+                        req.opcode <= cpu_opcode2accel_opcode(cpu_req_opcode); //idk get some big declaration global table in here :)
                         req.valid <= 1;
                         is_mem_req <= 0;
                     end

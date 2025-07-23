@@ -53,6 +53,7 @@ and the index of the winning request.
             last_grant <= '0;
         else if (|grant_OH)
             last_grant <= grant_OH;
+        //consider extending this for multibeat transfers to the serializer or smth to save internal wires, idk??
     end
     
 endmodule
