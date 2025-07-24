@@ -100,7 +100,7 @@ module scoreboard #(
     logic memory_needed = (req_opcode == MEM_OPCODE_READ) || (req_opcode == MEM_OPCODE_WRITE_ADDR); //implicitly hold mem on addr
 
     always_ff @( clk ) begin //array logic yum
-        if (!rst_n) begin
+        if (~rst_n) begin
             mem_array <= '0; //fills in valid bits
             out_mem_id  <= '0;
             out_accel_id <= '0;

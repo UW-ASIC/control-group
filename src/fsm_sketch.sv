@@ -32,6 +32,18 @@ module fsm_sketch #(
     input wire serializer_arb_won //from serializer
     //I'm foreseeing an issue here where we can win the serializer when another FSM wins the noc arbiter and both will want the scoreboard, so the noc arbiter will depend on nothing winning the serializer arbiter ig LMAO
 );
+    `include "opcode_map.svh" //include opcodes !
+    `include "cpu_opcode_map.svh"
+
+logic [OPCODE_W-1:0] cpu_opcode2accel_opcode [CPU_OPCODE_W-1:0]; //lookup table for issuing the right opcodes to accelerators
+
+initial begin //TODO move to top level module to not replicate this mapping table each FSM
+    cpu_opcode2accel_opcode[CPU_OPCODE_AES_DEC] = ACCEL_OPCODE_AES_DEC;
+    cpu_opcode2accel_opcode[CPU_OPCODE_AES_ENC] = ACCEL_OPCODE_AES_ENC;
+    cpu_opcode2accel_opcode[CPU_OPCODE_SHA_DEC] = ACCEL_OPCODE_AES_ENC;
+    cpu_opcode2accel_opcode[CPU_OPCODE_SHA_ENC] = ACCEL_OPCODE_AES_ENC;
+end        
+
     typedef enum logic[2:0] { //state machine enum
         IDLE = 3'h0,
         READ_KEY = 3'h1,
@@ -147,7 +159,7 @@ module fsm_sketch #(
                 EXECUTE: begin
                     if(!waiting_for_ack) begin
                         req.source_id <= OUR_SRC_ID;
-                        req.opcode <= cpu_opcode2accel_opcode(cpu_req_opcode); //idk get some big declaration global table in here :)
+                        req.opcode <= cpu_opcode2accel_opcode[cpu_req_opcode];
                         req.valid <= 1;
                         is_mem_req <= 0;
                     end
@@ -158,7 +170,7 @@ module fsm_sketch #(
                         req.addr <= cpu_req_text_addr;
                         //let scoreboard fill in our dest maybe? :eyes:
                         req.source_id <= OUR_SRC_ID;
-                        req.opcode <= MEM_OPCODE_WRITE_ADDR; //idk get some big declaration global table in here :)
+                        req.opcode <= MEM_OPCODE_WRITE_ADDR;
                         req.valid <= 1;
                         is_mem_req <= 1;
                     end
@@ -169,7 +181,7 @@ module fsm_sketch #(
                         //let scoreboard fill in our dest maybe? :eyes:
                         //let dest field in this req be the memory ID
                         req.source_id <= OUR_SRC_ID;
-                        req.opcode <= ACCEL_OPCODE_WRITE_DATA; //idk get some big declaration global table in here :)
+                        req.opcode <= ACCEL_OPCODE_WRITE_DATA;
                         req.valid <= 1;
                         is_mem_req <= 0;
                     end
