@@ -9,3 +9,8 @@ test/sim_build
 test/__pycache__/
 test/results.xml
 test/gate_level_netlist.v
+
+# serailizer test related only
+serailizer_test/sim_build
+serailizer_test/__pycache__/
+serailizer_test/results.xml
