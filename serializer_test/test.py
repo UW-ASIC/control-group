@@ -17,6 +17,7 @@ async def reset(dut, cycles=2):
     dut.valid_in.value = 0
     dut.opcode.value = 0
     dut.addr.value = 0
+    dut.n_cs.value = 1
     for _ in range(cycles):
         await RisingEdge(dut.clk)
     dut.rst_n.value = 1
@@ -29,8 +30,8 @@ async def shift_and_capture(dut, width):
     out_bits = []
     for _ in range(width):
         await FallingEdge(dut.spi_clk) 
-        await RisingEdge(dut.clk)        
-        await ReadOnly()                 
+        await RisingEdge(dut.clk)
+        await ReadOnly() 
         await Timer(1, "ps")      # <<< advance time; now safe to drive afterwards
         await ReadWrite()
         out_bits.append(int(dut.miso.value))
@@ -67,27 +68,30 @@ async def test_project(dut):
                 await RisingEdge(dut.clk)
 
             # Load
+            dut.n_cs.value     = 0
             dut.opcode.value   = opcodeRaw
             dut.addr.value     = addr
             dut.valid_in.value = 1
-            await RisingEdge(dut.clk)
-            dut.valid_in.value = 0
+            await FallingEdge(dut.spi_clk)
 
             # Must be busy during shifting
-            await ReadOnly()
-            assert int(dut.ready_out.value) == 0
-
+            while int(dut.ready_out.value) == 1:
+                await RisingEdge(dut.clk)
+            dut.valid_in.value = 0
             # Check stream
             word     = (opcodeRaw << ADDRW) | addr
             expected = bitList(word, SHIFT_W)
             got      = await shift_and_capture(dut, SHIFT_W)
+
+            while int(dut.ready_out.value) == 0:
+                await RisingEdge(dut.clk)
+            dut.n_cs.value = 1  
+
             print (f"Got: {got}, Expected: {expected}")
             assert got == expected, f"Frame mismatch exp={expected} got={got}"
 
         else: #Do nothing (wait signal)
-            while int(dut.ready_out.value) == 0:
-                await RisingEdge(dut.clk)
-
+            pass
     #   .clk(clk),
     #   .rst_n(rst_n),
     #   .spi_clk(spi_clk),

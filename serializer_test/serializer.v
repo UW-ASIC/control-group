@@ -3,7 +3,8 @@ module serializer #(
     parameter OPCODEW = 2
 ) (
     input wire clk,
-    input wire rst_n,
+    input wire rst_n, //must be held between a valid in and a ready_out
+    input wire n_cs,
     input wire spi_clk,
     input wire valid_in,
 
@@ -48,20 +49,22 @@ module serializer #(
             PISOreg     <= 0;
             miso        <= 1'b0;
         end
-        else if (valid_in && ready_out == 1) begin
-            PISOreg     <= {opcode , addr};
-            ready_out   <= 0;
-            cnt         <= (SHIFT_W-1);
-            miso        <= opcode[OPCODEW-1]; 
+        else if (~n_cs) begin
+            if (valid_in && ready_out == 1 && negedgeSPI) begin
+                PISOreg     <= {opcode , addr};
+                ready_out   <= 0;
+                cnt         <= (SHIFT_W-1);
+                miso        <= opcode[OPCODEW-1]; 
 
-        end else if (negedgeSPI && !ready_out) begin
-            miso        <= PISOreg[SHIFT_W-2];
-            PISOreg     <= {PISOreg[SHIFT_W-2:0], 1'b0};
+            end else if (negedgeSPI && !ready_out) begin
+                miso        <= PISOreg[SHIFT_W-2];
+                PISOreg     <= {PISOreg[SHIFT_W-2:0], 1'b0};
 
-            if (cnt != 0) begin
-                cnt <= cnt - 1;
-            end else begin 
-                ready_out <= 1;
+                if (cnt != 0) begin
+                    cnt <= cnt - 1;
+                end else begin 
+                    ready_out <= 1;
+                end
             end
         end
     end

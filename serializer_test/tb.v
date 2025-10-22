@@ -17,6 +17,7 @@ module tb ();
   // Wire up the inputs and outputs:
   wire clk;
   wire rst_n;
+  wire n_cs;
   wire spi_clk;
   wire valid_in;
 
@@ -30,6 +31,7 @@ module tb ();
   serializer #(.ADDRW(ADDRW_TB), .OPCODEW(OPCODEW_TB)) serializerDUT  (
       .clk(clk),
       .rst_n(rst_n),
+      .n_cs(n_cs),
       .spi_clk(spi_clk),
       .valid_in(valid_in),
       .opcode(opcode),
