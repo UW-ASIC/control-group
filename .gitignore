@@ -14,3 +14,7 @@ test/gate_level_netlist.v
 serailizer_test/sim_build
 serailizer_test/__pycache__/
 serailizer_test/results.xml
+serializer_test/__pycache__/test.cpython-312.pyc
+serializer_test/results.xml
+serializer_test/sim_build/rtl/cmds.f
+serializer_test/sim_build/rtl/sim.vvp
