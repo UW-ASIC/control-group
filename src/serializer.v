@@ -49,12 +49,13 @@ module serializer #(
             miso        <= 1'b0;
         end
         else if (valid_in && ready_out == 1) begin
-            PISOreg     <= { opcode , addr };
+            PISOreg     <= {opcode , addr};
             ready_out   <= 0;
             cnt         <= (SHIFT_W-1);
+            miso        <= opcode[OPCODEW-1]; 
 
         end else if (negedgeSPI && !ready_out) begin
-            miso        <= PISOreg[SHIFT_W-1];
+            miso        <= PISOreg[SHIFT_W-2];
             PISOreg     <= {PISOreg[SHIFT_W-2:0], 1'b0};
 
             if (cnt != 0) begin
