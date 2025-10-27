@@ -78,6 +78,7 @@ async def test_project(dut):
             while int(dut.ready_out.value) == 1:
                 await RisingEdge(dut.clk)
             dut.valid_in.value = 0
+            
             # Check stream
             word     = (opcodeRaw << ADDRW) | addr
             expected = bitList(word, SHIFT_W)

@@ -3,16 +3,17 @@ module serializer #(
     parameter OPCODEW = 2
 ) (
     input wire clk,
-    input wire rst_n, //must be held between a valid in and a ready_out
-    input wire n_cs,
+    input wire rst_n,       
+    input wire n_cs,        //must be held between a valid in and a ready_out
     input wire spi_clk,
     input wire valid_in,
 
-    input wire [OPCODEW-1:0] opcode,
-    input wire [ADDRW-1:0] addr,
+    input wire [OPCODEW-1:0]    opcode,
+    input wire [ADDRW-1:0]      addr,
 
-    output reg miso,
-    output reg ready_out
+    output reg  miso,
+    output reg  ready_out,
+    output wire err          //Error flag. Deserializer must reject collected data within txn 
 );
     function integer clog2;
         input integer value;
@@ -31,8 +32,13 @@ module serializer #(
     reg [SHIFT_W-1:0] PISOreg;                  //ASSUMES [opcode][ADDRW], left shift
     reg [1:0] clkstat;                          //clock for spi
     wire negedgeSPI = (clkstat == 2'b10);       //detect posedge of spi
+    
+    reg [1:0] sync_n_cs;                       //sync reg
+    reg [1:0] hist;                            //similar to clockstat, used to detect held values. 
+    reg valid_ncs;                             //clean ncs 
 
-    //posedge SPIclk, fSPIclk < fclk
+    ////////////////////////////////////
+    //fSPIclk < fclk
     //posedge {01}, hi {11}, lo {00}, negedge {10}
     always @(posedge clk or negedge rst_n) begin 
         if (~rst_n) begin
@@ -42,6 +48,37 @@ module serializer #(
         end
     end
 
+    ////////////////////////////////////
+    //n_cs "debounce"
+    //note, this can also be debounced to the sysclk instead, but then you have some cases where you have an extra
+    //spi clock edge, and other cases you dont. Just making it on spi clock edge makes it consistent.
+
+    //synchronize n_cs to sysclk
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            sync_n_cs <= 2'b11;                     //default ncs is high
+        end else begin
+            sync_n_cs <= {sync_n_cs[0], n_cs};      //SAFE DATA IS ON sync_n_cs[1]
+        end
+    end
+
+    //"debounce"
+    always@(posedge clk or rst_n) begin 
+        if (rst_n) begin //reset counters
+            hist            <= 2'b1;
+            valid_ncs       <= 1'b1;                      //default ncs is high
+        end else begin
+            if (negedgeSPI) begin
+                hist <= {hist[0], sync_n_cs[1]};          //shift reg effectively allows 1 spi clock delay as it takes 1 clock cycle to update reg to both be equal
+                if (hist[1] == hist[0]) begin
+                    valid_ncs <= hist[1]; 
+                end
+            end
+        end
+    end
+
+    ////////////////////////////////////
+    //actual shift reg and sending of data
     always @(posedge clk or negedge rst_n) begin
         if (~rst_n) begin 
             ready_out   <= 1;
@@ -49,7 +86,7 @@ module serializer #(
             PISOreg     <= 0;
             miso        <= 1'b0;
         end
-        else if (~n_cs) begin
+        else if (~valid_ncs) begin
             if (valid_in && ready_out == 1 && negedgeSPI) begin
                 PISOreg     <= {opcode , addr};
                 ready_out   <= 0;
@@ -66,10 +103,24 @@ module serializer #(
                     ready_out <= 1;
                 end
             end
+
+        ////////////////////////////////////
+        //Error handling
+        end else if (valid_ncs && !ready_out) begin //ncs goes high while ready_out still ongoing
+            err <= 1'b1;
+            ready_out   <= 1;
+            cnt         <= (SHIFT_W-1);
+            PISOreg     <= 0;
+            miso        <= 1'b0;
+        end else begin
+            err <= 1'b0;
         end
     end
-    
+
+
 endmodule
+
+
 
 
 // Serializer
