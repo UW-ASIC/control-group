@@ -66,9 +66,9 @@ module serializer #(
     end
 
     //"debounce"
-    always@(posedge clk or rst_n) begin 
-        if (rst_n) begin //reset counters
-            hist            <= 2'b1;
+    always@(posedge clk or negedge rst_n) begin 
+        if (!rst_n) begin //reset counters
+            hist            <= 2'b11;
             valid_ncs       <= 1'b1;                      //default ncs is high
         end else begin
             if (negedgeSPI) begin
@@ -88,17 +88,21 @@ module serializer #(
             cnt         <= (SHIFT_W-1);
             PISOreg     <= 0;
             miso        <= 1'b0;
+            err         <= 1'b0;
         end
         else if (~valid_ncs) begin
             if (valid_in && ready_out == 1 && negedgeSPI) begin
                 PISOreg     <= {opcode , addr};
                 ready_out   <= 0;
                 cnt         <= (SHIFT_W-1);
-                miso        <= opcode[OPCODEW-1]; 
+                //miso        <= opcode[OPCODEW-1]; //No longer needed because the shifter will always have one off error. 
+                                                    //Alternatively can replace and then force deseralizer to discard last bit.
+                                                    //Leaving like this means deseralizer can discard first bit instead. Easier just keep shifting
+                                                    //and naturally throw away the first bit.
 
             end else if (negedgeSPI && !ready_out) begin
-                miso        <= PISOreg[SHIFT_W-2];
-                PISOreg     <= {PISOreg[SHIFT_W-2:0], 1'b0};
+                miso        <= PISOreg[SHIFT_W-1];
+                PISOreg     <= {PISOreg[SHIFT_W-1:0], 1'b0};
 
                 if (cnt != 0) begin
                     cnt <= cnt - 1;
@@ -110,7 +114,7 @@ module serializer #(
         ////////////////////////////////////
         //Error handling
         end else if (valid_ncs && !ready_out) begin //ncs goes high while ready_out still ongoing, clear error state and raise flag
-            err <= 1'b1;
+            err         <= 1'b1;
             ready_out   <= 1;
             cnt         <= (SHIFT_W-1);
             PISOreg     <= 0;
