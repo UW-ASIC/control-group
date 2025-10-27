@@ -26,6 +26,7 @@ module tb ();
 
   reg miso;
   reg ready_out;
+  reg err;
 
   // Replace tt_um_example with your module name:
   serializer #(.ADDRW(ADDRW_TB), .OPCODEW(OPCODEW_TB)) serializerDUT  (
@@ -37,7 +38,8 @@ module tb ();
       .opcode(opcode),
       .addr(addr),
       .miso(miso),
-      .ready_out(ready_out)
+      .ready_out(ready_out),
+      .err(err)
   );
 
 

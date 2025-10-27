@@ -13,7 +13,7 @@ module serializer #(
 
     output reg  miso,
     output reg  ready_out,
-    output wire err          //Error flag. Deserializer must reject collected data within txn 
+    output reg  err          //Error flag. Deserializer must reject collected data within txn 
 );
     function integer clog2;
         input integer value;
@@ -51,7 +51,10 @@ module serializer #(
     ////////////////////////////////////
     //n_cs "debounce"
     //note, this can also be debounced to the sysclk instead, but then you have some cases where you have an extra
-    //spi clock edge, and other cases you dont. Just making it on spi clock edge makes it consistent.
+    //spi clock edge, and other cases you dont. Just making it on spi clock edge makes it consistent. Technically it is possible
+    //for a rare glitch which manages to occur on two negedges of spi to trigger a false exit/entry, 
+    //but 1. if you have glitches that long, there are probably bigger problems, and 2. any fast clock based sampling gets really complicated if you want
+    //to harden to any fclk >= fspi_clk and im still assuming we are lacking a bit on floorspace. 
 
     //synchronize n_cs to sysclk
     always @(posedge clk or negedge rst_n) begin
@@ -106,7 +109,7 @@ module serializer #(
 
         ////////////////////////////////////
         //Error handling
-        end else if (valid_ncs && !ready_out) begin //ncs goes high while ready_out still ongoing
+        end else if (valid_ncs && !ready_out) begin //ncs goes high while ready_out still ongoing, clear error state and raise flag
             err <= 1'b1;
             ready_out   <= 1;
             cnt         <= (SHIFT_W-1);

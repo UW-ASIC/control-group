@@ -37,14 +37,78 @@ async def shift_and_capture(dut, width):
         out_bits.append(int(dut.miso.value))
     return out_bits
 
+async def forced_error(dut, ADDRW, SHIFT_W, addr, opcodeRaw): #Force an error by randomly raising n_cs within 1-10 clock cycles of pulling ncs low
+
+    errorclk = random.randint(1, 10)
+    errorcnt = 0
+
+    while int(dut.ready_out.value) == 0:
+        await RisingEdge(dut.clk)
+
+    # Load
+    dut.n_cs.value     = 0
+    dut.opcode.value   = opcodeRaw
+    dut.addr.value     = addr
+    dut.valid_in.value = 1
+
+    while int(dut.ready_out.value) == 1:
+        await RisingEdge(dut.spi_clk)
+    dut.valid_in.value = 0
+
+    # wait random number of SPI edges, then abort by raising n_cs
+    for _ in range(random.randint(1, 10)):
+        await RisingEdge(dut.spi_clk)
+    dut.n_cs.value = 1
+
+    # err should pulse for exactly 1 spi_clk
+    await RisingEdge(dut.spi_clk)
+    assert int(dut.err.value) == 1, "err not asserted on abort"
+    await RisingEdge(dut.spi_clk)
+    assert int(dut.err.value) == 0, "err did not clear after one spi cycle"
+
+    while int(dut.ready_out.value) == 0:
+        await RisingEdge(dut.spi_clk)
+
+async def send_data(dut, ADDRW, SHIFT_W, addr, opcodeRaw):
+    while int(dut.ready_out.value) == 0:
+        await RisingEdge(dut.clk)
+
+    # Load
+    dut.n_cs.value     = 0
+    dut.opcode.value   = opcodeRaw
+    dut.addr.value     = addr
+    dut.valid_in.value = 1
+
+    # Must be busy during shifting
+    while int(dut.ready_out.value) == 1:
+        await RisingEdge(dut.clk)
+    dut.valid_in.value = 0
+    
+    # Check stream
+    word     = (opcodeRaw << ADDRW) | addr
+    expected = bitList(word, SHIFT_W)
+    got      = await shift_and_capture(dut, SHIFT_W)
+
+    while int(dut.ready_out.value) == 0:
+        await RisingEdge(dut.clk)
+    dut.n_cs.value = 1  
+
+    print (f"Got: {got}, Expected: {expected}")
+    assert got == expected, f"Frame mismatch exp={expected} got={got}"
+
+async def glitch_ncs(dut): #just flick it on and off and see if ncs incorrectly enters low.
+    dut.n_cs.value = 1
+    await Timer(0.4, "us")
+    dut.n_cs.value = 0
+
 @cocotb.test()
 async def test_project(dut):
     dut._log.info("Start")
 
     # Set the clock period to 10 us (1000 KHz)
     clock = Clock(dut.clk, 1, units="us")
-    #Slower SPI clocks (100 KHz)
-    spiclk = Clock(dut.spi_clk, 10, units="us") 
+    #Slower SPI clocks (500 KHz), you could even randomize this...
+    spiclk = Clock(dut.spi_clk, 2, units="us") 
 
     cocotb.start_soon(clock.start())
     cocotb.start_soon(spiclk.start())
@@ -57,42 +121,28 @@ async def test_project(dut):
     await reset(dut)
 
     #TEST CONFIGS==========
-    numberCycles = 20 #Test how many times
+    numberCycles = 30 #Test how many times
     #=======================
     for _ in range(numberCycles):
         addr = (random.randrange(1 << ADDRW))
         opcodeRaw = random.randrange(1 << OPCODEW)
 
-        if random.randint(0,9) < 6: #Send something
-            while int(dut.ready_out.value) == 0:
-                await RisingEdge(dut.clk)
+        what_happens = random.randint(0,9)
 
-            # Load
-            dut.n_cs.value     = 0
-            dut.opcode.value   = opcodeRaw
-            dut.addr.value     = addr
-            dut.valid_in.value = 1
-            await FallingEdge(dut.spi_clk)
-
-            # Must be busy during shifting
-            while int(dut.ready_out.value) == 1:
+        if what_happens < 6:    #send data
+            await send_data(dut, ADDRW, SHIFT_W, addr, opcodeRaw)
+        elif (what_happens >= 6 and(what_happens % 2 == 0)): #force error
+            await forced_error(dut, ADDRW, SHIFT_W, addr, opcodeRaw)
+        else:   #Sit 2-10 clock cycles and do nothing. Also test gitching by fiddling with ncs and seeing if anything loads.
+            max = random.randint(2,10)
+            test_ncs = random.randint(2, max)
+            for i in range(max):
                 await RisingEdge(dut.clk)
-            dut.valid_in.value = 0
+                if i == test_ncs:
+                    await glitch_ncs(dut)
+
             
-            # Check stream
-            word     = (opcodeRaw << ADDRW) | addr
-            expected = bitList(word, SHIFT_W)
-            got      = await shift_and_capture(dut, SHIFT_W)
 
-            while int(dut.ready_out.value) == 0:
-                await RisingEdge(dut.clk)
-            dut.n_cs.value = 1  
-
-            print (f"Got: {got}, Expected: {expected}")
-            assert got == expected, f"Frame mismatch exp={expected} got={got}"
-
-        else: #Do nothing (wait signal)
-            pass
     #   .clk(clk),
     #   .rst_n(rst_n),
     #   .spi_clk(spi_clk),
