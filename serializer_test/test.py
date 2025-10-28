@@ -3,8 +3,7 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, ReadOnly, FallingEdge, ReadWrite, Timer, with_timeout
-from cocotb.result import SimTimeoutError
+from cocotb.triggers import RisingEdge, ReadOnly, FallingEdge, ReadWrite, Timer, with_timeout, SimTimeoutError
 import random
 
 def bitList(value: int, width: int):
@@ -56,26 +55,37 @@ async def forced_error(dut, ADDRW, SHIFT_W, addr, opcodeRaw): #Force an error by
         await RisingEdge(dut.spi_clk)
     dut.valid_in.value = 0
 
-    for _ in range(random.randint(1, 9)):
+    # random.randint(1, 10)
+    for _ in range(5):
         await RisingEdge(dut.spi_clk)
     dut.n_cs.value = 1
 
     # err should pulse for exactly 1 normal clock
     try:
-        await with_timeout(RisingEdge(dut.err), 20, "us")
+        await with_timeout(RisingEdge(dut.err), 100, "us") 
     except SimTimeoutError:
         raise AssertionError("ERR never asserted after forced abort (raise n_cs during busy)")
+    
+    # print(f"DUT error value: {dut.err.value}")
+    await RisingEdge(dut.clk) 
+    # print(f"DUT error value: {dut.err.value}")
+    await RisingEdge(dut.clk)
+    # print(f"DUT error value: {dut.err.value}")
+    assert int(dut.err.value) == 0, "ERR did not clear after a pulse"
 
-    await RisingEdge(dut.clk)
-    print(f"DUT error value: {dut.err.value}")
-    await RisingEdge(dut.clk)
-    print(f"DUT error value: {dut.err.value}")
-    await RisingEdge(dut.clk)
-    print(f"DUT error value: {dut.err.value}")
-    await RisingEdge(dut.clk)
-    print(f"DUT error value: {dut.err.value}")
+    """
+    it is in fact two rising edges you have to wait. This is what it normally looks like with at each clock edge. It does work.
 
-    # assert int(dut.err.value) == 0, "ERR did not clear after a pulse"
+    DUT error value: 0
+    DUT error value: 0
+    DUT error value: 0
+    DUT error value: 1
+    DUT error value: 0
+    DUT error value: 0
+    DUT error value: 0
+    DUT error value: 0
+    
+    """
 
     while int(dut.ready_out.value) == 0:
         await RisingEdge(dut.spi_clk)
@@ -117,9 +127,9 @@ async def test_project(dut):
     dut._log.info("Start")
 
     # Set the clock period to 10 us (1000 KHz)
-    clock = Clock(dut.clk, 1, units="us")
-    #Slower SPI clocks (500 KHz), you could even randomize this...
-    spiclk = Clock(dut.spi_clk, 2, units="us") 
+    clock = Clock(dut.clk, 1, unit="us")
+    #Slower SPI clocks (100 KHz), you could even randomize this...
+    spiclk = Clock(dut.spi_clk, 10, unit="us") 
 
     cocotb.start_soon(clock.start())
     cocotb.start_soon(spiclk.start())

@@ -31,7 +31,7 @@ module serializer #(
     reg [CW-1:0] cnt;                           //count reg
     reg [SHIFT_W-1:0] PISOreg;                  //ASSUMES [opcode][ADDRW], left shift
     reg [1:0] clkstat;                          //clock for spi
-    wire negedgeSPI = (clkstat == 2'b10);       //detect posedge of spi
+    wire negedgeSPI = (clkstat == 2'b10);       //detect edge
     
     reg [1:0] sync_n_cs;                       //sync reg
     reg [1:0] hist;                            //similar to clockstat, used to detect held values. 
@@ -41,7 +41,7 @@ module serializer #(
     //fSPIclk < fclk
     //posedge {01}, hi {11}, lo {00}, negedge {10}
     always @(posedge clk or negedge rst_n) begin 
-        if (~rst_n) begin
+        if (!rst_n) begin
             clkstat <=0;
         end else begin
             clkstat <= {clkstat[0], spi_clk};
@@ -83,7 +83,7 @@ module serializer #(
     ////////////////////////////////////
     //actual shift reg and sending of data
     always @(posedge clk or negedge rst_n) begin
-        if (~rst_n) begin 
+        if (!rst_n) begin 
             ready_out   <= 1;
             cnt         <= (SHIFT_W-1);
             PISOreg     <= 0;
@@ -95,16 +95,12 @@ module serializer #(
                 PISOreg     <= {opcode , addr};
                 ready_out   <= 0;
                 cnt         <= (SHIFT_W-1);
-                //miso        <= opcode[OPCODEW-1]; //No longer needed because the shifter will always have one off error. 
-                                                    //Alternatively can replace and then force deseralizer to discard last bit.
-                                                    //Leaving like this means deseralizer can discard first bit instead. Easier just keep shifting
-                                                    //and naturally throw away the first bit.
-
+                miso        <= opcode[OPCODEW-1];
             end else if (negedgeSPI && !ready_out) begin
-                miso        <= PISOreg[SHIFT_W-1];
+                miso        <= PISOreg[SHIFT_W-2];
                 PISOreg     <= {PISOreg[SHIFT_W-1:0], 1'b0};
 
-                if (cnt != 0) begin
+                if (cnt != 1) begin
                     cnt <= cnt - 1;
                 end else begin 
                     ready_out <= 1;
@@ -141,3 +137,8 @@ endmodule
 // slower spi_clk for data transmission (to correctly implement you'll need to detect if 
 // a spi_clk negedge occurred at every chip clk posedge and shift out data to miso - 
 // if you get stuck here ask me). 
+
+ //No longer needed because the shifter will always have one off error. 
+                                                    //Alternatively can replace and then force deseralizer to discard last bit.
+                                                    //Leaving like this means deseralizer can discard first bit instead. Easier just keep shifting
+                                                    //and naturally throw away the first bit.

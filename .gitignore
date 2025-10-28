@@ -21,3 +21,4 @@ serializer_test/sim_build/rtl/sim.vvp
 serializer_test/sim_build/rtl/cocotb_iverilog_dump.v
 serializer_test/tb.gtkw
 serializer_test/.fuse_hidden0000d97900000001
+/serializer_test/__pycache__
