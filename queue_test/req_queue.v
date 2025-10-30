@@ -51,13 +51,13 @@ module req_queue #(
             if (valid_in) begin
                 if (ready_out_aes) begin
                     if (opcode[0] == 0) begin
-                        aesQueue <= aesQueue ^ (((aesQueue >> aesWriteIdx) ^ {opcode, key_addr, text_addr}) << aesWriteIdx);
+                        aesQueue <= aesQueue ^ ((((aesQueue >> aesWriteIdx) ^ {opcode, key_addr, text_addr}) & ((1 << INSTRW) - 1)) << aesWriteIdx);
                         aesWriteIdx <= (aesWriteIdx + INSTRW) % QUEUEW;
                     end 
                 end
                 if (ready_out_sha) begin
                     if (opcode[0] == 1) begin
-                        shaQueue <= shaQueue ^ (((shaQueue >> shaWriteIdx) ^ {opcode, key_addr, text_addr}) << shaWriteIdx);
+                        shaQueue <= shaQueue ^ ((((shaQueue >> shaWriteIdx) ^ {opcode, key_addr, text_addr}) & ((1 << INSTRW) - 1)) << shaWriteIdx);
                         shaWriteIdx <= (shaWriteIdx + INSTRW) % QUEUEW;
                     end
                 end
