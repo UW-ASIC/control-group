@@ -14,7 +14,7 @@ module tb ();
   end
   localparam integer ADDRW_TB   = 8;
   localparam integer OPCODEW_TB = 2;
-  localparam integer QLENGTH_TB = 16;
+  localparam integer QDEPTH_TB = 16;
   // Wire up the inputs and outputs:
   wire clk;
   wire rst_n;
@@ -26,12 +26,15 @@ module tb ();
   wire [ADDRW_TB-1:0] key_addr;
   wire [ADDRW_TB-1:0] text_addr;
 
-  reg [2*ADDRW_TB+OPCODEW_TB-1:0] instr;
-  reg valid_out;
-  reg ready_out;
+  reg [2*ADDRW_TB+OPCODEW_TB-1:0] instr_aes;
+  reg valid_out_aes;
+  reg ready_out_aes;
+  reg [2*ADDRW_TB+OPCODEW_TB-1:0] instr_sha;
+  reg valid_out_sha;
+  reg ready_out_sha;
 
   // Replace tt_um_example with your module name:
-  req_queue #(.ADDRW(ADDRW_TB), .OPCODEW(OPCODEW_TB), .QLENGTH(QLENGTH_TB)) req_queue (
+  req_queue #(.ADDRW(ADDRW_TB), .OPCODEW(OPCODEW_TB), .QDEPTH(QDEPTH_TB)) req_queue (
       .clk(clk),
       .rst_n(rst_n),
       .valid_in(valid_in),
@@ -40,9 +43,12 @@ module tb ();
       .opcode(opcode),
       .key_addr(key_addr),
       .text_addr(text_addr),
-      .instr(instr),
-      .valid_out(valid_out),
-      .ready_out(ready_out)
+      .instr_aes(instr_aes),
+      .valid_out_aes(valid_out_aes),
+      .ready_out_aes(ready_out_aes),
+      .instr_sha(instr_sha),
+      .valid_out_sha(valid_out_sha),
+      .ready_out_sha(ready_out_sha)
   );
 
 
