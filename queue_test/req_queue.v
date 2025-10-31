@@ -1,5 +1,5 @@
 module req_queue #(
-    parameter ADDRW = 8,
+    parameter ADDRW = 24,
     parameter OPCODEW = 2,
     parameter QDEPTH = 16
 ) (
@@ -12,6 +12,7 @@ module req_queue #(
     input wire [OPCODEW - 1:0] opcode,
     input wire [ADDRW - 1:0] key_addr,
     input wire [ADDRW - 1:0] text_addr,
+    input wire [ADDRW - 1:0] dest_addr,
 
     output reg [2 * ADDRW + OPCODEW - 1:0] instr_aes,
     output reg valid_out_aes,
@@ -21,7 +22,7 @@ module req_queue #(
     output reg ready_out_sha
 );
 
-    localparam integer INSTRW = 2 * ADDRW + OPCODEW;
+    localparam integer INSTRW = 3 * ADDRW + OPCODEW;
     localparam integer QUEUEW = INSTRW * QDEPTH;
 
     reg [QUEUEW - 1:0] aesQueue;
@@ -51,13 +52,13 @@ module req_queue #(
             if (valid_in) begin
                 if (ready_out_aes) begin
                     if (opcode[0] == 0) begin
-                        aesQueue <= aesQueue ^ ((((aesQueue >> aesWriteIdx) ^ {opcode, key_addr, text_addr}) & ((1 << INSTRW) - 1)) << aesWriteIdx);
+                        aesQueue <= aesQueue ^ ((((aesQueue >> aesWriteIdx) ^ {opcode, key_addr, text_addr, dest_addr}) & ((1 << INSTRW) - 1)) << aesWriteIdx);
                         aesWriteIdx <= (aesWriteIdx + INSTRW) % QUEUEW;
                     end 
                 end
                 if (ready_out_sha) begin
                     if (opcode[0] == 1) begin
-                        shaQueue <= shaQueue ^ ((((shaQueue >> shaWriteIdx) ^ {opcode, key_addr, text_addr}) & ((1 << INSTRW) - 1)) << shaWriteIdx);
+                        shaQueue <= shaQueue ^ ((((shaQueue >> shaWriteIdx) ^ {opcode, key_addr, text_addr, dest_addr}) & ((1 << INSTRW) - 1)) << shaWriteIdx);
                         shaWriteIdx <= (shaWriteIdx + INSTRW) % QUEUEW;
                     end
                 end
@@ -87,11 +88,9 @@ endmodule
 
 
 // Request queue
-// Inputs: opcode[1:0], key_addr[ADDRW-1:0], text_addr[ADDRW-1:0], valid_in, ready_in_aes, ready_in_sha
+// Inputs: opcode[1:0], key_addr[ADDRW-1:0], text_addr[ADDRW-1:0], dest_addr[ADDRW-1:0], valid_in, ready_in_aes, ready_in_sha
 // Outputs: instr_aes[2*ADDRW+1:0], valid_out_aes, ready_out_aes, instr_sha[2*ADDRW+1:0], valid_out_sha, ready_out_sha
 // Description: A big FIFO queue of depth QDEPTH. Valid_in is asserted by deserializer once it has the full instruction from xtal CPU.
 // ready_in signals come from FSMs when they are ready to begin a new operation. Assert valid_out when a queue entry is ready to be sent to an FSM,
 // and remove the request from queue when both valid_out and ready_in are asserted. Deassert ready_out when the queue is full and do not take in
-// further requests from Deserializer. 
-
-// There is an underlying assumption of an OOKKKKKKKKTTTTTTTT instruction, where the least significant bit denotes AES/SHA.
+// further requests from Deserializer.

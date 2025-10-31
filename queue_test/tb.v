@@ -12,7 +12,7 @@ module tb ();
     $dumpvars(0, tb);
     #1;
   end
-  localparam integer ADDRW_TB   = 8;
+  localparam integer ADDRW_TB  = 24;
   localparam integer OPCODEW_TB = 2;
   localparam integer QDEPTH_TB = 16;
   // Wire up the inputs and outputs:
@@ -25,6 +25,7 @@ module tb ();
   wire [OPCODEW_TB-1:0] opcode;
   wire [ADDRW_TB-1:0] key_addr;
   wire [ADDRW_TB-1:0] text_addr;
+  wire [ADDRW_TB-1:0] dest_addr;
 
   reg [2*ADDRW_TB+OPCODEW_TB-1:0] instr_aes;
   reg valid_out_aes;
@@ -43,6 +44,7 @@ module tb ();
       .opcode(opcode),
       .key_addr(key_addr),
       .text_addr(text_addr),
+      .dest_addr(dest_addr),
       .instr_aes(instr_aes),
       .valid_out_aes(valid_out_aes),
       .ready_out_aes(ready_out_aes),
