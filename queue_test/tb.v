@@ -27,10 +27,10 @@ module tb ();
   wire [ADDRW_TB-1:0] text_addr;
   wire [ADDRW_TB-1:0] dest_addr;
 
-  reg [2*ADDRW_TB+OPCODEW_TB-1:0] instr_aes;
+  reg [3*ADDRW_TB+OPCODEW_TB-1:0] instr_aes;
   reg valid_out_aes;
   reg ready_out_aes;
-  reg [2*ADDRW_TB+OPCODEW_TB-1:0] instr_sha;
+  reg [3*ADDRW_TB+OPCODEW_TB-1:0] instr_sha;
   reg valid_out_sha;
   reg ready_out_sha;
 

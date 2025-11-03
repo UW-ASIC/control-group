@@ -27,3 +27,4 @@ serializer_test/.fuse_hidden0000d97900000001
 queue_test/sim_build/
 queue_test/__pycache__/
 queue_test/results.xml
+queue_test/tb.gtkw
