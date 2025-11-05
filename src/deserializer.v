@@ -12,12 +12,11 @@ module deserializer #(
     input  wire               cs_n,
     input  wire               ready_in,
     //OUTPUTS: opcode[1:0], key_addr[ADDRW-1:0], text_addr[ADDRW-1:0], valid_out
-    output reg  [OPCODEW-1:0] opcode,     // width from OPCODEW
-    output reg  [  ADDRW-1:0] key_addr,
-    output reg  [  ADDRW-1:0] text_addr,
+    output reg  [OPCODEW-1:0] opcode,     
+    output reg  [ADDRW-1:0]   key_addr,
+    output reg  [ADDRW-1:0]   text_addr,
     output reg                valid_out
 );
-
 
     function integer clog2;
         input integer value;
@@ -36,116 +35,72 @@ module deserializer #(
             end
         end
     endfunction
-    localparam integer SHIFT_W = OPCODEW + (2 * ADDRW);
-    localparam integer CW = clog2(SHIFT_W + 1);  //counting width
+    localparam integer SHIFT_W = OPCODEW + (2 * ADDRW); 
+    localparam integer CW = clog2(SHIFT_W + 1);  
 
-    // CDC and edge detect logic, similar to the serializer style
-
-    reg [1:0] clkstat;
-    reg [1:0] sync_n_cs;
-    reg [1:0] mosi_sync;
+    //Synchronize
+    reg [1:0] r_clk;
+    reg [1:0] r_cs_n;
+    reg [1:0] r_mosi;    
 
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            clkstat   <= 2'b00;
-            sync_n_cs <= 2'b11;
-            mosi_sync <= 2'b00;
+        if (rst_n) begin
+            r_clk <= 3'b00;
+            r_cs_n <= 2'b11;
+            r_mosi <= 2'b00;
         end else begin
-            clkstat   <= {clkstat[0], spi_clk};
-            sync_n_cs <= {sync_n_cs[0], cs_n};
-            mosi_sync <= {mosi_sync[0], mosi};
+            r_clk <= {r_clk[0], spi_clk};
+            r_cs_n <= {r_cs_n[0], cs_n};
+            r_mosi <= {r_mosi[0], mosi};
         end
     end
 
-    wire posedgeSPI = (clkstat == 2'b01);  // detected posedge of spi_clk (0->1)
-    wire cs_n_s = sync_n_cs[1];
-    wire ncs_active = ~cs_n_s;  // LOW = selected
-    wire mosi_s = mosi_sync[1];
-
-
-    // shift/handshake
-
+    //Shift Data
+    wire clk_posedge = (r_clk == 2'b01);  // detected posedge of spi_clk (0->1)
     reg [CW-1:0] cnt;  // how many bits of current word have been collected
-    reg [SHIFT_W-1:0] SIPOreg;
+    reg [SHIFT_W-1:0] shift_reg;
+    reg busy;  // when pending_valid == 1, ignore new incoming bits
+    
+    always @ (posedge clk or negedge rst_n) begin
+        if (rst_n) begin
+            cnt <= {CW{1'b0}};
+            shift_reg <= {SHIFT_W{1'b0}};
 
-    reg pending_valid;  // when pending_valid == 1, ignore new incoming bits
+            busy <= 1'b0;            
 
-    // Shift register and counter
-
-    // sole shift/handshake block
-
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            cnt           <= {CW{1'b0}};
-            SIPOreg       <= {SHIFT_W{1'b0}};
-
-            pending_valid <= 1'b0;
-
-            opcode        <= {OPCODEW{1'b0}};
-            key_addr      <= {ADDRW{1'b0}};
-            text_addr     <= {ADDRW{1'b0}};
-            valid_out     <= 1'b0;
-        end else begin
+            opcode <= {OPCODEW{1'b0}};
+            key_addr <= {ADDRW{1'b0}};
+            text_addr <= {ADDRW{1'b0}};
             valid_out <= 1'b0;
-
-            // if we already have a completed word (pending valid) and downstream is ready, consume it
-            if (pending_valid && ready_in) begin
-
-                opcode        <= SIPOreg[SHIFT_W-1 : SHIFT_W-OPCODEW];  // decode from shift reg
-                key_addr      <= SIPOreg[SHIFT_W-OPCODEW-1 : SHIFT_W-OPCODEW-ADDRW];
-                text_addr     <= SIPOreg[ADDRW-1 : 0];
-
-                valid_out     <= 1'b1;  // 1cycle pause
-                pending_valid <= 1'b0;  // free
+        end else if begin
+            //shift register
+            if (~r_cs[1]) begin
+                if (clk_posedge && !busy) begin
+                    //shift in data
+                    shift_reg <= {shift_reg[SHIFT_W-2:0], r_mosi[1]}; 
+                    if (cnt == (SHIFT_W-1)) begin
+                        //decode shift_reg
+                        busy <= 1'b1;
+                        cnt  <= {CW{1'b0}};
+                    end else cnt <= cnt + 1'b1; //increment count
+                end
+            end else begin 
+                //on de-assertion, clear shift_reg, count
+                if (!busy) begin  
+                    cnt     <= {CW{1'b0}};
+                    shift_reg <= {SHIFT_W{1'b0}};
+                end
             end
 
-            // shift incoming bits from MOSI
-            if (ncs_active) begin
-                if (posedgeSPI && !pending_valid) begin
-
-                    SIPOreg <= {SIPOreg[SHIFT_W-2:0], mosi_s};
-
-                    if (cnt == (SHIFT_W - 1)) begin
-                        // full word captured in SIPOreg
-                        pending_valid <= 1'b1;
-
-                        //reset counter
-                        cnt           <= {CW{1'b0}};
-                    end else begin
-                        cnt <= cnt + 1'b1;
-                    end
-                end
-            end  // if CS_n is inactive, dont use partial word and reset.
-            else begin  // ncs_inactive == 1
-
-                if (!pending_valid) begin  // keep completed word under backpressure
-                    cnt     <= {CW{1'b0}};
-                    SIPOreg <= {SHIFT_W{1'b0}};
-                end
+            //decode shift-register output
+            if (busy && ready_in) begin
+                opcode        <= shift_reg[SHIFT_W-1 : SHIFT_W-OPCODEW];  // decode from shift reg
+                key_addr      <= shift_reg[SHIFT_W-OPCODEW-1 : ADDRW];
+                text_addr     <= shift_reg[ADDRW-1 : 0];
+                valid_out     <= 1'b1;  // 1cycle pause
+                busy <= 1'b0; 
             end
         end
     end
-
-
-    /*Takes data received by xtal CPU via SPI,
-stores in shift register,
-then outputs full instruction in output ports
-and valid bit after shift register is populated, assuming request queue has room (is ready).
-We are using a fast clk for the chip (registers run on this clk)
-and a separate, slower spi_clk for data transmission
-(to correctly implement detect if a spi_clk posedge occurred at every chip clk posedge
-and shift in data to regs - if you get stuck here ask me).
-**Consider edge cases such as CS_n changing mid transmission
-*/
-
-    /*STEP 1: Use SPI to retrieve data from xtal*/
-
-    /*STEP 2: Shift Register*/
-
-    /*STEP 3: After shift-reg population, output full instruction to OUTPUT PORT*/
-
-
-
-
 
 endmodule
