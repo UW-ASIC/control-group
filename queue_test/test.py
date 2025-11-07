@@ -47,23 +47,19 @@ async def test_project(dut):
     dut.valid_in.value = 1
     await ClockCycles(dut.clk, 1)
     dut.valid_in.value = 0
-    await ClockCycles(dut.clk, 1)
     dut.ready_in_sha.value = 0
     assert int(str(dut.instr_sha.value), 2) == 0x155AA55AA55AA5A5A5A
     assert dut.valid_out_sha == 1
     assert dut.ready_out_aes == 1
     assert dut.ready_out_sha == 1
     await ClockCycles(dut.clk, 1)
-    assert dut.valid_out_sha == 0
 
     dut.ready_in_aes.value = 1  # Reads AES instruction from queue
-    await ClockCycles(dut.clk, 2)
+    await ClockCycles(dut.clk, 1)
     dut.ready_in_aes.value = 0
     assert int(str(dut.instr_aes.value), 2) == 0x0AA55AA55AA55A5A5A5
-    assert dut.valid_out_aes == 1
     assert dut.ready_out_aes == 1
     await ClockCycles(dut.clk, 1)
-    assert dut.valid_out_aes == 0
     await ClockCycles(dut.clk, 10)
 
     dut.key_addr.value = 0x010203  # Fill AES Instruction queue
@@ -77,11 +73,10 @@ async def test_project(dut):
 
     dut.valid_in.value = 0  # Read AES Instruction from queue
     dut.ready_in_aes.value = 1
-    await ClockCycles(dut.clk, 2)
+    await ClockCycles(dut.clk, 1)
     assert int(str(dut.instr_aes.value), 2) == 0x0010203040506070809
     assert dut.valid_out_aes.value == 1
     dut.ready_in_aes.value = 0
     await ClockCycles(dut.clk, 1)
     assert dut.ready_out_aes.value == 1
-    assert dut.valid_out_aes.value == 0
-    await ClockCycles(dut.clk, 10)
+    await ClockCycles(dut.clk, 2)

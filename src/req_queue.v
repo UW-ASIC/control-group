@@ -32,29 +32,38 @@ module req_queue #(
         end
     endfunction
 
-    localparam integer INSTRW = 3 * ADDRW + OPCODEW;
-    localparam integer QUEUEW = INSTRW * QDEPTH;
-    localparam integer IDXW = clog2(QUEUEW);
+    initial begin
+        integer i;
+        $dumpfile("tb.vcd");
+        for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, aesQueue[i]);
+        for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, shaQueue[i]);
+    end
 
-    reg [QUEUEW - 1:0] aesQueue;
+    localparam integer INSTRW = 3 * ADDRW + OPCODEW;
+    localparam integer IDXW = clog2(QDEPTH);
+
+    reg [INSTRW - 1:0] aesQueue [QDEPTH - 1:0];
     reg [IDXW - 1:0] aesReadIdx;
     reg [IDXW - 1:0] aesWriteIdx;
     reg aesFull;
-    reg [QUEUEW - 1:0] shaQueue;
+    reg [INSTRW - 1:0] shaQueue [QDEPTH - 1:0];
     reg [IDXW - 1:0] shaReadIdx;
     reg [IDXW - 1:0] shaWriteIdx;
     reg shaFull;
 
     reg readyOutAesInternal;
     reg readyOutShaInternal;
+    reg validOutAesInternal;
+    reg validOutShaInternal;
 
     always @(posedge clk or negedge rst_n) begin 
         if (!rst_n) begin
-            aesQueue <= {QUEUEW{1'b0}};
+            integer i;
+            for (i = 0; i < QDEPTH; i = i + 1) aesQueue[i] <= {INSTRW{1'b0}};
             aesReadIdx <= {IDXW{1'b0}};
             aesWriteIdx <= {IDXW{1'b0}};
             aesFull <= 0;
-            shaQueue <= {QUEUEW{1'b0}};
+            for (i = 0; i < QDEPTH; i = i + 1) shaQueue[i] <= {INSTRW{1'b0}};
             shaReadIdx <= {IDXW{1'b0}};
             shaWriteIdx <= {IDXW{1'b0}};
             shaFull <= 0;
@@ -68,46 +77,38 @@ module req_queue #(
             if (valid_in) begin
                 if (readyOutAesInternal) begin
                     if (opcode[0] == 0) begin
-                        aesQueue <= aesQueue ^ ((((aesQueue >> aesWriteIdx) ^ {opcode, key_addr, text_addr, dest_addr}) & ((1 << INSTRW) - 1)) << aesWriteIdx);
-                        aesWriteIdx <= (aesWriteIdx + INSTRW) % QUEUEW;
+                        aesQueue[aesWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
+                        aesWriteIdx <= aesWriteIdx + 1;
                         if (aesWriteIdx == aesReadIdx) begin
                             aesFull <= 1;
                         end
-                    end 
+                    end
                 end
                 if (readyOutShaInternal) begin
                     if (opcode[0] == 1) begin
-                        shaQueue <= shaQueue ^ ((((shaQueue >> shaWriteIdx) ^ {opcode, key_addr, text_addr, dest_addr}) & ((1 << INSTRW) - 1)) << shaWriteIdx);
-                        shaWriteIdx <= (shaWriteIdx + INSTRW) % QUEUEW;
+                        shaQueue[shaWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
+                        shaWriteIdx <= shaWriteIdx + 1;
                         if (shaWriteIdx == shaReadIdx) begin
                             shaFull <= 1;
                         end
                     end
                 end
             end
+            valid_out_aes <= validOutAesInternal;
+            valid_out_sha <= validOutShaInternal;
+            instr_aes <= aesQueue[aesReadIdx];
+            instr_sha <= shaQueue[shaReadIdx];
             if (ready_in_aes) begin
-                if (valid_out_aes) begin
-                    aesReadIdx <= (aesReadIdx + INSTRW) % QUEUEW;
-                    valid_out_aes <= 0;
-                    aesFull <= 0;
-                    ready_out_aes <= 1;
-                end else begin
-                    instr_aes <= (aesQueue & (((1 << INSTRW) - 1) << aesReadIdx)) >> aesReadIdx;
-                    valid_out_aes <= 1;
-                end
+                aesReadIdx <= aesReadIdx + 1;
+                aesFull <= 0;
+                ready_out_aes <= 1;
             end else begin
                 ready_out_aes <= readyOutAesInternal;
             end
             if (ready_in_sha) begin
-                if (valid_out_sha) begin
-                    shaReadIdx <= (shaReadIdx + INSTRW) % QUEUEW;
-                    valid_out_sha <= 0;
-                    shaFull <= 0;
-                    ready_out_sha <= 1;
-                end else begin
-                    instr_sha <= (shaQueue & (((1 << INSTRW) - 1) << shaReadIdx)) >> shaReadIdx;
-                    valid_out_sha <= 1;
-                end
+                shaReadIdx <= shaReadIdx + 1;
+                shaFull <= 0;
+                ready_out_sha <= 1;
             end else begin
                 ready_out_sha <= readyOutShaInternal;
             end
@@ -118,10 +119,23 @@ module req_queue #(
         if (!rst_n) begin
             readyOutAesInternal <= 0;
             readyOutShaInternal <= 0;
+            validOutAesInternal <= 0;
+            validOutShaInternal <= 0;
         end else begin
             readyOutAesInternal <= (aesReadIdx != aesWriteIdx || !aesFull);
             readyOutShaInternal <= (shaReadIdx != shaWriteIdx || !shaFull);
+            validOutAesInternal <= (aesReadIdx != aesWriteIdx || aesFull);
+            validOutShaInternal <= (shaReadIdx != shaWriteIdx || shaFull);
         end
     end
 
 endmodule
+
+
+// Request queue
+// Inputs: opcode[1:0], key_addr[ADDRW-1:0], text_addr[ADDRW-1:0], dest_addr[ADDRW-1:0], valid_in, ready_in_aes, ready_in_sha
+// Outputs: instr_aes[2*ADDRW+1:0], valid_out_aes, ready_out_aes, instr_sha[2*ADDRW+1:0], valid_out_sha, ready_out_sha
+// Description: A big FIFO queue of depth QDEPTH. Valid_in is asserted by deserializer once it has the full instruction from xtal CPU.
+// ready_in signals come from FSMs when they are ready to begin a new operation. Assert valid_out when a queue entry is ready to be sent to an FSM,
+// and remove the request from queue when ready_in is asserted. Deassert ready_out when the queue is full and do not take in
+// further requests from Deserializer.
