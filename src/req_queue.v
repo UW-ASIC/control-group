@@ -14,12 +14,12 @@ module req_queue #(
     input wire [ADDRW - 1:0] text_addr,
     input wire [ADDRW - 1:0] dest_addr,
 
-    output reg [3 * ADDRW + OPCODEW - 1:0] instr_aes,
-    output reg valid_out_aes,
-    output reg ready_out_aes,
-    output reg [3 * ADDRW + OPCODEW - 1:0] instr_sha,
-    output reg valid_out_sha,
-    output reg ready_out_sha
+    output wire [3 * ADDRW + OPCODEW - 1:0] instr_aes,
+    output wire valid_out_aes,
+    output wire ready_out_aes,
+    output wire [3 * ADDRW + OPCODEW - 1:0] instr_sha,
+    output wire valid_out_sha,
+    output wire ready_out_sha
 );
 
     function integer clog2;
@@ -51,10 +51,12 @@ module req_queue #(
     reg [IDXW - 1:0] shaWriteIdx;
     reg shaFull;
 
-    reg readyOutAesInternal;
-    reg readyOutShaInternal;
-    reg validOutAesInternal;
-    reg validOutShaInternal;
+    assign ready_out_aes = (aesReadIdx != aesWriteIdx || !aesFull);
+    assign ready_out_sha = (shaReadIdx != shaWriteIdx || !shaFull);
+    assign valid_out_aes = (aesReadIdx != aesWriteIdx || aesFull);
+    assign valid_out_sha = (shaReadIdx != shaWriteIdx || shaFull);
+    assign instr_aes = aesQueue[aesReadIdx];
+    assign instr_sha = shaQueue[shaReadIdx];
 
     always @(posedge clk or negedge rst_n) begin 
         if (!rst_n) begin
@@ -67,15 +69,9 @@ module req_queue #(
             shaReadIdx <= {IDXW{1'b0}};
             shaWriteIdx <= {IDXW{1'b0}};
             shaFull <= 0;
-            instr_aes <= {INSTRW{1'b0}};
-            valid_out_aes <= 0;
-            ready_out_aes <= 0;
-            instr_sha <= {INSTRW{1'b0}};
-            valid_out_sha <= 0;
-            ready_out_sha <= 0;
         end else begin
             if (valid_in) begin
-                if (readyOutAesInternal) begin
+                if (ready_out_aes) begin
                     if (opcode[0] == 0) begin
                         aesQueue[aesWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
                         aesWriteIdx <= aesWriteIdx + 1;
@@ -84,7 +80,7 @@ module req_queue #(
                         end
                     end
                 end
-                if (readyOutShaInternal) begin
+                if (ready_out_sha) begin
                     if (opcode[0] == 1) begin
                         shaQueue[shaWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
                         shaWriteIdx <= shaWriteIdx + 1;
@@ -94,38 +90,14 @@ module req_queue #(
                     end
                 end
             end
-            valid_out_aes <= validOutAesInternal;
-            valid_out_sha <= validOutShaInternal;
-            instr_aes <= aesQueue[aesReadIdx];
-            instr_sha <= shaQueue[shaReadIdx];
             if (ready_in_aes) begin
                 aesReadIdx <= aesReadIdx + 1;
                 aesFull <= 0;
-                ready_out_aes <= 1;
-            end else begin
-                ready_out_aes <= readyOutAesInternal;
             end
             if (ready_in_sha) begin
                 shaReadIdx <= shaReadIdx + 1;
                 shaFull <= 0;
-                ready_out_sha <= 1;
-            end else begin
-                ready_out_sha <= readyOutShaInternal;
             end
-        end
-    end
-
-    always @(negedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            readyOutAesInternal <= 0;
-            readyOutShaInternal <= 0;
-            validOutAesInternal <= 0;
-            validOutShaInternal <= 0;
-        end else begin
-            readyOutAesInternal <= (aesReadIdx != aesWriteIdx || !aesFull);
-            readyOutShaInternal <= (shaReadIdx != shaWriteIdx || !shaFull);
-            validOutAesInternal <= (aesReadIdx != aesWriteIdx || aesFull);
-            validOutShaInternal <= (shaReadIdx != shaWriteIdx || shaFull);
         end
     end
 

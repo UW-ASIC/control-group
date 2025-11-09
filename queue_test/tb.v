@@ -27,12 +27,12 @@ module tb ();
   wire [ADDRW_TB-1:0] text_addr;
   wire [ADDRW_TB-1:0] dest_addr;
 
-  reg [3*ADDRW_TB+OPCODEW_TB-1:0] instr_aes;
-  reg valid_out_aes;
-  reg ready_out_aes;
-  reg [3*ADDRW_TB+OPCODEW_TB-1:0] instr_sha;
-  reg valid_out_sha;
-  reg ready_out_sha;
+  wire [3*ADDRW_TB+OPCODEW_TB-1:0] instr_aes;
+  wire valid_out_aes;
+  wire ready_out_aes;
+  wire [3*ADDRW_TB+OPCODEW_TB-1:0] instr_sha;
+  wire valid_out_sha;
+  wire ready_out_sha;
 
   // Replace tt_um_example with your module name:
   req_queue #(.ADDRW(ADDRW_TB), .OPCODEW(OPCODEW_TB), .QDEPTH(QDEPTH_TB)) req_queue (
