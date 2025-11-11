@@ -2,12 +2,12 @@
 
 module deserializer_tb;
 
-  //  Parameters (mirror DUT) 
+  // Parameters (mirror DUT)
   localparam int ADDRW   = 8;
   localparam int OPCODEW = 2;
-  localparam int SHIFT_W = OPCODEW + 2*ADDRW; 
+  localparam int SHIFT_W = OPCODEW + 2*ADDRW;
 
-  //  DUT I/O 
+  // DUT I/O
   logic                   clk, rst_n;
   logic                   spi_clk, mosi, cs_n;
   logic                   ready_in;
@@ -16,7 +16,7 @@ module deserializer_tb;
   wire [ADDRW-1:0]        key_addr, text_addr;
   wire                    valid_out;
 
-  //  Instantiate DUT 
+  // Instantiate DUT
   deserializer #(
     .ADDRW(ADDRW),
     .OPCODEW(OPCODEW)
@@ -33,15 +33,14 @@ module deserializer_tb;
     .valid_out (valid_out)
   );
 
-  //  System clock (fast) 
-  // 100 MHz => 10 ns period
+  // System clock (fast)
   initial clk = 1'b0;
   always  #5 clk = ~clk;
 
   // spi_clk is driven by tasks
   initial spi_clk = 1'b0;
 
-  //  SPI helpers 
+  // SPI helpers
   task automatic spi_clk_pulse();
     #30 spi_clk = 1'b1;  // posedge
     #30 spi_clk = 1'b0;  // negedge
@@ -70,7 +69,7 @@ module deserializer_tb;
     end
   endtask
 
-  // Send only top N bits 
+  // Send only top N bits
   task automatic send_partial_then_abort
   (
     input logic [SHIFT_W-1:0] instr,
@@ -87,7 +86,7 @@ module deserializer_tb;
     end
   endtask
 
-  //  Scoreboard 
+  // Scoreboard
   logic [SHIFT_W-1:0] expected_q [0:63];
   int wr_ptr, rd_ptr;
 
@@ -140,11 +139,14 @@ module deserializer_tb;
     end
   end
 
-  //  Test vectors + sequence 
+  // Test vectors + sequence
   logic [OPCODEW-1:0] opA, opB, opC;
   logic [ADDRW-1:0]   keyA, keyB, keyC;
   logic [ADDRW-1:0]   txtA, txtB, txtC;
   logic [SHIFT_W-1:0] instrA, instrB, instrC;
+  logic [OPCODEW-1:0] random_opcode;
+  logic [ADDRW-1:0] random_key, random_text;
+  logic [SHIFT_W-1:0] random_instr;
 
   initial begin
     // defaults
@@ -200,6 +202,32 @@ module deserializer_tb;
     $display("[%0t] Releasing backpressure (ready_in=1): expect single valid_out for instrC", $time);
     ready_in = 1'b1;
     #600;
+
+    // 5) CS_n change mid-transfer (discard partial data)
+    $display("[%0t] TEST5: CS_n change mid-transfer, no valid output expected", $time);
+    ready_in = 1'b1;
+    send_partial_then_abort(instrA, SHIFT_W/2); // Send half of instrA
+    #40; // Ensure the system doesn't assert valid_out yet
+    cs_n = 1'b1; // Deassert cs_n during transfer
+    #400;
+
+    // 6) Partial word reset (cs_n high mid-transfer)
+    $display("[%0t] TEST6: Partial word reset; cs_n deasserted", $time);
+    send_partial_then_abort(instrB, SHIFT_W/2); // Send half of instrB
+    #400;
+
+    // 7) Randomized instruction test
+    $display("[%0t] TEST7: Randomized instruction test", $time);
+
+    repeat (10) begin // Repeat 10 times with different random instructions
+        random_opcode = $random;
+        random_key = $random;
+        random_text = $random;
+        random_instr = pack_instr(random_opcode, random_key, random_text);
+        push_exp(random_instr);
+        send_instruction(random_instr);
+        #400;
+    end
 
     $display("[%0t] ALL TESTS COMPLETED OK", $time);
     $finish;
