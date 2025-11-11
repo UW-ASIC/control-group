@@ -11,7 +11,7 @@
 // --------------
 // New Outputs:
 // --------------
-// ready_out: signals completion (dequeue signal to request queue)
+// ready_req_out: signals completion (dequeue signal to request queue)
 // bus_req: request access to bus
 // data_in[7:0]: to data bus
 // valid_in: data valid when sending
@@ -19,25 +19,26 @@
 // -------------
 // Notes:
 // -------------
-// req_valid / ready_out form a handshake with the request queue:
+// req_valid / ready_req_out form a handshake with the request queue:
 // FSM only starts when req_valid is asserted.
-// FSM asserts ready_out for one cycle after completing all operations.
+// FSM asserts ready_req_out for one cycle after completing all operations.
 // bus_req / bus_grant form a handshake with the bus arbiter:
 // FSM requests bus ownership when it needs to access memory or data bus.
 // FSM only drives valid_in and data_in when bus_grant is asserted.
 // ACK signals (ack_in) are event triggers for completion of each operation (read, hash, write).
 
 module sha_fsm #(
-    parameter ADDRW = 8
+    parameter ADDRW = 24,
+    parameter ACCEL_ID = 2'b11
 )(
     input  wire              clk,
-    input  wire              rst,
+    input  wire              rst_n,
 
     // Request queue interface
     input  wire              req_valid,
-    input  wire [2*ADDRW+1:0] req_data,
-    output reg               ready_out,  // tells input req queue to release
-    output reg               valid_out, // tells complete queue to accept current req 
+    input  wire [3*ADDRW+1:0] req_data,
+    output reg               ready_req_out,  // tells input req queue to release
+    output reg               valid_compq_out, // tells complete queue to accept current req 
 
     // Bus arbiter interface
     output reg               bus_req,
@@ -47,9 +48,10 @@ module sha_fsm #(
     input  wire [2:0]        ack_in,
 
     // Data bus interface
-    output reg [7:0]         data_in,
-    output reg               valid_in
+    output reg [ADDRW+7:0]   data_out
 );
+
+    localparam MEM_ID = 2'b00;
 
     // FSM states
     typedef enum logic [3:0] {
@@ -71,8 +73,8 @@ module sha_fsm #(
     //---------------------------------
     // State Register
     //---------------------------------
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst)
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
             state <= READY;
         else
             state <= next_state;
@@ -81,17 +83,21 @@ module sha_fsm #(
     //---------------------------------
     // Next-State Logic
     //---------------------------------
-    always_comb begin
+    always @(*) begin
         next_state = state;
-        bus_req    = 1'b0;
-        ready_out  = 1'b0;
-        valid_in   = 1'b0;
+        bus_req = 1'b0;
+        ready_req_out = 1'b0;
+        valid_compq_out = 1'b0;
+        data_out = 'b0;
 
         case (state)
             READY: begin
-                if (req_valid)
+                ready_req_out = 1'b1;
+                if (req_valid) begin
                     next_state = REQ_BUS;
-                    // need to read in req and data from the queue here (adresses?)
+                    bus_req = 1'b1;
+                    data_out = {req_data[3*ADDRW-1:2*ADDRW], 2'b00, ACCEL_ID, MEM_ID, 2'b00};
+                end
             end
 
             REQ_BUS: begin
@@ -142,29 +148,12 @@ module sha_fsm #(
             end
 
             COMPLETE: begin
-                ready_out = 1'b1;  // signal request queue
+                ready_req_out = 1'b1;  // signal request queue
                 next_state = READY;
             end
 
             default: next_state = READY;
         endcase
-    end
-
-    //---------------------------------
-    // Output Example Logic
-    //---------------------------------
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst) begin
-            data_in <= 8'd0;
-        end else begin
-            case (state)
-                READKEY:  data_in <= 8'hA1;
-                READTEXT: data_in <= 8'hB2;
-                HASHOP:   data_in <= 8'hC3;
-                MEMWRITE: data_in <= 8'hD4;
-                default:  data_in <= 8'd0;
-            endcase
-        end
     end
 
 endmodule
