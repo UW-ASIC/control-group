@@ -2,12 +2,12 @@
 
 module deserializer_tb;
 
-  // ---------------- Parameters (mirror DUT) ----------------
+  //  Parameters (mirror DUT) 
   localparam int ADDRW   = 8;
   localparam int OPCODEW = 2;
-  localparam int SHIFT_W = OPCODEW + 2*ADDRW; // {opcode, key, text} MSB-first
+  localparam int SHIFT_W = OPCODEW + 2*ADDRW; 
 
-  // ---------------- DUT I/O ----------------
+  //  DUT I/O 
   logic                   clk, rst_n;
   logic                   spi_clk, mosi, cs_n;
   logic                   ready_in;
@@ -16,7 +16,7 @@ module deserializer_tb;
   wire [ADDRW-1:0]        key_addr, text_addr;
   wire                    valid_out;
 
-  // ---------------- Instantiate DUT ----------------
+  //  Instantiate DUT 
   deserializer #(
     .ADDRW(ADDRW),
     .OPCODEW(OPCODEW)
@@ -33,7 +33,7 @@ module deserializer_tb;
     .valid_out (valid_out)
   );
 
-  // ---------------- System clock (fast) ----------------
+  //  System clock (fast) 
   // 100 MHz => 10 ns period
   initial clk = 1'b0;
   always  #5 clk = ~clk;
@@ -41,14 +41,13 @@ module deserializer_tb;
   // spi_clk is driven by tasks
   initial spi_clk = 1'b0;
 
-  // ---------------- SPI helpers ----------------
-  // One SPI bit time; DUT samples on rising edge
+  //  SPI helpers 
   task automatic spi_clk_pulse();
     #30 spi_clk = 1'b1;  // posedge
     #30 spi_clk = 1'b0;  // negedge
   endtask
 
-  // Pack fields into MSB-first stream for SPI
+  // MSB first stream for SPI
   function automatic logic [SHIFT_W-1:0] pack_instr
   (
     input logic [OPCODEW-1:0] opc,
@@ -58,7 +57,7 @@ module deserializer_tb;
     return {opc, key, txt};
   endfunction
 
-  // Send full frame (MSB-first) under CS low
+  // Send full frame (MSB-first)
   task automatic send_instruction(input logic [SHIFT_W-1:0] instr);
     int i;
     begin
@@ -71,7 +70,7 @@ module deserializer_tb;
     end
   endtask
 
-  // Send only top N bits then abort (raise CS)
+  // Send only top N bits 
   task automatic send_partial_then_abort
   (
     input logic [SHIFT_W-1:0] instr,
@@ -88,7 +87,7 @@ module deserializer_tb;
     end
   endtask
 
-  // ---------------- Scoreboard (tiny queue) ----------------
+  //  Scoreboard 
   logic [SHIFT_W-1:0] expected_q [0:63];
   int wr_ptr, rd_ptr;
 
@@ -141,7 +140,7 @@ module deserializer_tb;
     end
   end
 
-  // ---------------- Test vectors + sequence ----------------
+  //  Test vectors + sequence 
   logic [OPCODEW-1:0] opA, opB, opC;
   logic [ADDRW-1:0]   keyA, keyB, keyC;
   logic [ADDRW-1:0]   txtA, txtB, txtC;
