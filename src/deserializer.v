@@ -44,8 +44,8 @@ module deserializer #(
     reg [1:0] r_mosi;    
 
     always @(posedge clk or negedge rst_n) begin
-        if (rst_n) begin
-            r_clk <= 3'b00;
+        if (!rst_n) begin       // Changed to active-low reset
+            r_clk <= 2'b00;     // Changed from 3'b00
             r_cs_n <= 2'b11;
             r_mosi <= 2'b00;
         end else begin
@@ -57,50 +57,53 @@ module deserializer #(
 
     //Shift Data
     wire clk_posedge = (r_clk == 2'b01);  // detected posedge of spi_clk (0->1)
+    wire cs_active  = ~r_cs_n[1];   // active-low CS
+    wire mosi_s = r_mosi[1];
+
     reg [CW-1:0] cnt;  // how many bits of current word have been collected
     reg [SHIFT_W-1:0] shift_reg;
     reg busy;  // when pending_valid == 1, ignore new incoming bits
     
     always @ (posedge clk or negedge rst_n) begin
-        if (rst_n) begin
-            cnt <= {CW{1'b0}};
-            shift_reg <= {SHIFT_W{1'b0}};
+        if (!rst_n) begin   // Active-low reset
+            cnt        <= {CW{1'b0}};
+            shift_reg  <= {SHIFT_W{1'b0}};
+            busy       <= 1'b0;
+            opcode     <= {OPCODEW{1'b0}};
+            key_addr   <= {ADDRW{1'b0}};
+            text_addr  <= {ADDRW{1'b0}};
+            valid_out  <= 1'b0;
+        end else begin
+            valid_out <= 1'b0;  // one-cycle pulse default
 
-            busy <= 1'b0;            
-
-            opcode <= {OPCODEW{1'b0}};
-            key_addr <= {ADDRW{1'b0}};
-            text_addr <= {ADDRW{1'b0}};
-            valid_out <= 1'b0;
-        end else if begin
-            //shift register
-            if (~r_cs[1]) begin
+            // shift register
+            if (~r_cs_n[1]) begin                     // FIX: r_cs_n (synced CS), not r_cs
                 if (clk_posedge && !busy) begin
-                    //shift in data
-                    shift_reg <= {shift_reg[SHIFT_W-2:0], r_mosi[1]}; 
+                    // shift in data
+                    shift_reg <= {shift_reg[SHIFT_W-2:0], r_mosi[1]};
                     if (cnt == (SHIFT_W-1)) begin
-                        //decode shift_reg
-                        busy <= 1'b1;
+                        busy <= 1'b1;                 // full word captured
                         cnt  <= {CW{1'b0}};
-                    end else cnt <= cnt + 1'b1; //increment count
+                    end else begin
+                        cnt <= cnt + 1'b1;            // increment count
+                    end
                 end
-            end else begin 
-                //on de-assertion, clear shift_reg, count
-                if (!busy) begin  
-                    cnt     <= {CW{1'b0}};
+            end else begin
+                // on de-assertion, clear partial word
+                if (!busy) begin
+                    cnt       <= {CW{1'b0}};
                     shift_reg <= {SHIFT_W{1'b0}};
                 end
             end
 
-            //decode shift-register output
+            // decode shift-register output
             if (busy && ready_in) begin
-                opcode        <= shift_reg[SHIFT_W-1 : SHIFT_W-OPCODEW];  // decode from shift reg
-                key_addr      <= shift_reg[SHIFT_W-OPCODEW-1 : ADDRW];
-                text_addr     <= shift_reg[ADDRW-1 : 0];
-                valid_out     <= 1'b1;  // 1cycle pause
-                busy <= 1'b0; 
+                opcode    <= shift_reg[SHIFT_W-1 : SHIFT_W-OPCODEW];
+                key_addr  <= shift_reg[SHIFT_W-OPCODEW-1 : SHIFT_W-OPCODEW-ADDRW]; // FIX: slice
+                text_addr <= shift_reg[ADDRW-1 : 0];
+                valid_out <= 1'b1;   // 1-cycle pulse
+                busy      <= 1'b0;
             end
         end
     end
-
 endmodule
