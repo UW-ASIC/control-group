@@ -51,10 +51,10 @@ module req_queue #(
     reg [IDXW - 1:0] shaWriteIdx;
     reg shaFull;
 
-    assign ready_out_aes = (aesReadIdx != aesWriteIdx || !aesFull);
-    assign ready_out_sha = (shaReadIdx != shaWriteIdx || !shaFull);
-    assign valid_out_aes = (aesReadIdx != aesWriteIdx || aesFull);
-    assign valid_out_sha = (shaReadIdx != shaWriteIdx || shaFull);
+    assign ready_out_aes = (aesReadIdx != aesWriteIdx || !aesFull) && rst_n;
+    assign ready_out_sha = (shaReadIdx != shaWriteIdx || !shaFull) && rst_n;
+    assign valid_out_aes = (aesReadIdx != aesWriteIdx || aesFull) && rst_n;
+    assign valid_out_sha = (shaReadIdx != shaWriteIdx || shaFull) && rst_n;
     assign instr_aes = aesQueue[aesReadIdx];
     assign instr_sha = shaQueue[shaReadIdx];
 
@@ -74,8 +74,8 @@ module req_queue #(
                 if (ready_out_aes) begin
                     if (opcode[0] == 0) begin
                         aesQueue[aesWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
-                        aesWriteIdx <= aesWriteIdx + 1;
-                        if (aesWriteIdx == aesReadIdx) begin
+                        aesWriteIdx <= (aesWriteIdx + 1) % QDEPTH;
+                        if (aesReadIdx == (aesWriteIdx + 1) % QDEPTH) begin
                             aesFull <= 1;
                         end
                     end
@@ -83,8 +83,8 @@ module req_queue #(
                 if (ready_out_sha) begin
                     if (opcode[0] == 1) begin
                         shaQueue[shaWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
-                        shaWriteIdx <= shaWriteIdx + 1;
-                        if (shaWriteIdx == shaReadIdx) begin
+                        shaWriteIdx <= (shaWriteIdx + 1) % QDEPTH;
+                        if (shaReadIdx == (shaWriteIdx + 1) % QDEPTH) begin
                             shaFull <= 1;
                         end
                     end
