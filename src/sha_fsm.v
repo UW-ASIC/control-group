@@ -5,14 +5,14 @@
 // --------------
 // req_valid: indicates an instruction is available in the request queue
 // req_data[2*ADDRW+1:0]: the instruction itself
-// bus_grant: from arbiter (FSM can use the bus now)
+// arb_grant: from arbiter (FSM can use the bus now)
 // ack_in[2:0]: ACKs for read/write/hash complete
 
 // --------------
 // New Outputs:
 // --------------
 // ready_req_out: signals completion (dequeue signal to request queue)
-// bus_req: request access to bus
+// arb_req: request access to bus
 // data_in[7:0]: to data bus
 // valid_in: data valid when sending
 
@@ -22,9 +22,9 @@
 // req_valid / ready_req_out form a handshake with the request queue:
 // FSM only starts when req_valid is asserted.
 // FSM asserts ready_req_out for one cycle after completing all operations.
-// bus_req / bus_grant form a handshake with the bus arbiter:
+// arb_req / arb_grant form a handshake with the bus arbiter:
 // FSM requests bus ownership when it needs to access memory or data bus.
-// FSM only drives valid_in and data_in when bus_grant is asserted.
+// FSM only drives valid_in and data_in when arb_grant is asserted.
 // ACK signals (ack_in) are event triggers for completion of each operation (read, hash, write).
 
 module sha_fsm #(
@@ -37,12 +37,15 @@ module sha_fsm #(
     // Request queue interface
     input  wire              req_valid,
     input  wire [3*ADDRW+1:0] req_data,
-    output reg               ready_req_out,  // tells input req queue to release
-    output reg               valid_compq_out, // tells complete queue to accept current req 
+    output reg               ready_req_out,     // tells input req queue to release
+
+    input wire               comq_ready_in,
+    output reg [ADDRW-1:0]   compq_data_out,    // send output to xtal CPU to complete queue
+    output reg               valid_compq_out,   // tells complete queue to accept current req 
 
     // Bus arbiter interface
-    output reg               bus_req,
-    input  wire              bus_grant,
+    output reg               arb_req,
+    input  wire              arb_grant,
 
     // ACKs from memory / accelerator
     input  wire [2:0]        ack_in,
@@ -54,21 +57,21 @@ module sha_fsm #(
     localparam MEM_ID = 2'b00;
 
     // FSM states
-    typedef enum logic [3:0] {
-        READY      = 4'd0,
-        REQ_BUS    = 4'd1,
-        READKEY    = 4'd2,
-        WAIT_RDKEY = 4'd3,
-        READTEXT   = 4'd4,
-        WAIT_RDTXT = 4'd5,
-        HASHOP     = 4'd6,
-        WAIT_HASH  = 4'd7,
-        MEMWRITE   = 4'd8,
-        WAIT_WRITE = 4'd9,
-        COMPLETE   = 4'd10
-    } state_t;
+    localparam READY        = 4'b0000;
+    localparam RDKEY        = 4'b0001;
+    localparam WAIT_RDKEY   = 4'b0010;
+    localparam RDTEXT       = 4'b0011;
+    localparam WAIT_RDTXT   = 4'b0100;
+    localparam HASHOP       = 4'b0101;
+    localparam WAIT_HASHOP  = 4'b0110;
+    localparam MEMWR        = 4'b0111;
+    localparam WAIT_MEMWR   = 4'b1000;
+    localparam COMPLETE     = 4'b1001;
 
-    state_t state, next_state;
+    reg [3:0] state, next_state;
+
+    // Request buffer
+    reg [3*ADDRW+1:0] r_req_data;
 
     //---------------------------------
     // State Register
@@ -85,75 +88,106 @@ module sha_fsm #(
     //---------------------------------
     always @(*) begin
         next_state = state;
-        bus_req = 1'b0;
-        ready_req_out = 1'b0;
-        valid_compq_out = 1'b0;
-        data_out = 'b0;
-
         case (state)
             READY: begin
-                ready_req_out = 1'b1;
-                if (req_valid) begin
-                    next_state = REQ_BUS;
-                    bus_req = 1'b1;
-                    data_out = {req_data[3*ADDRW-1:2*ADDRW], 2'b00, ACCEL_ID, MEM_ID, 2'b00};
-                end
+                if (req_valid) next_state = RDKEY;
             end
 
-            REQ_BUS: begin
-                bus_req = 1'b1;
-                if (bus_grant)
-                    next_state = READKEY;
-            end
-
-            READKEY: begin
-                valid_in = 1'b1;
-                // issue read command
-                next_state = WAIT_RDKEY;
+            RDKEY: begin
+                if (arb_grant) next_state = WAIT_RDKEY;
             end
 
             WAIT_RDKEY: begin
-                if (ack_in[0])  // READ COMPLETE
-                    next_state = READTEXT;
+                if (ack_in == {1'b1, MEM_ID}) next_state = RDTEXT;
             end
 
-            READTEXT: begin
-                valid_in = 1'b1;
-                next_state = WAIT_RDTXT;
+            RDTEXT: begin
+                if (arb_grant) next_state = WAIT_RDTXT;
             end
 
             WAIT_RDTXT: begin
-                if (ack_in[1])
-                    next_state = HASHOP;
+                if (ack_in == {1'b1, MEM_ID}) next_state = HASHOP;
             end
 
             HASHOP: begin
-                // issue hash start command
-                next_state = WAIT_HASH;
+                if (arb_grant) next_state = WAIT_HASHOP;
             end
 
-            WAIT_HASH: begin
-                if (ack_in[2]) // hash done
-                    next_state = MEMWRITE;
+            WAIT_HASHOP: begin
+                if (ack_in == {1'b1, ACCEL_ID}) next_state = MEMWR;
             end
 
-            MEMWRITE: begin
-                valid_in = 1'b1;
-                next_state = WAIT_WRITE;
+            MEMWR: begin
+                if (arb_grant) next_state = WAIT_MEMWR;
             end
 
-            WAIT_WRITE: begin
-                if (ack_in[0])
-                    next_state = COMPLETE;
+            WAIT_MEMWR: begin
+                if (ack_in == {1'b1, MEM_ID}) next_state = COMPLETE;
             end
 
             COMPLETE: begin
-                ready_req_out = 1'b1;  // signal request queue
-                next_state = READY;
+                if (comq_ready_in) next_state = READY;
             end
 
             default: next_state = READY;
         endcase
+    end
+
+    //---------------------------------
+    // Output Logic
+    //---------------------------------
+    always @(*) begin
+        arb_req = 1'b0;
+        ready_req_out = 1'b0;
+        valid_compq_out = 1'b0;
+        data_out = 'b0;
+        compq_data_out = 'b0;
+        case (state) 
+            READY: begin
+                ready_req_out = 1'b1;
+            end
+            RDKEY: begin
+                arb_req = 1'b1;
+                data_out = {r_req_data[3*ADDRW-1:2*ADDRW], 2'b00, ACCEL_ID, MEM_ID, 2'b00};
+            end
+            WAIT_RDKEY: begin
+                data_out = {r_req_data[3*ADDRW-1:2*ADDRW], 2'b00, ACCEL_ID, MEM_ID, 2'b00};
+            end
+            RDTEXT: begin
+                arb_req = 1'b1;
+                data_out = {r_req_data[2*ADDRW-1:ADDRW], 2'b00, ACCEL_ID, MEM_ID, 2'b01};
+            end
+            WAIT_RDTXT: begin
+                data_out = {r_req_data[2*ADDRW-1:ADDRW], 2'b00, ACCEL_ID, MEM_ID, 2'b01};
+            end
+            HASHOP: begin
+                arb_req = 1'b1;
+                data_out = {24'b0, r_req_data[73], 1'b0, ACCEL_ID, 4'b0011};
+            end
+            WAIT_HASHOP: begin
+                data_out = {24'b0, r_req_data[73], 1'b0, ACCEL_ID, 4'b0011};
+            end
+            MEMWR: begin
+                arb_req = 1'b1;
+                data_out = {r_req_data[ADDRW-1:0], 2'b00, MEM_ID, ACCEL_ID, 2'b10};
+            end
+            WAIT_MEMWR: begin
+                data_out = {r_req_data[ADDRW-1:0], 2'b00, MEM_ID, ACCEL_ID, 2'b10};
+            end
+            COMPLETE: begin
+                compq_data_out = {r_req_data[ADDRW-1:0]};
+                valid_compq_out = 1'b1;
+            end
+            default: begin
+            end
+        endcase
+    end
+
+    // Load data from req queue into regs
+    always @(posedge clk) begin
+        if (req_valid && state == READY) begin
+            r_req_data <= req_data;
+        end
     end
 
 endmodule
