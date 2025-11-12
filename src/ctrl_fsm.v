@@ -27,7 +27,7 @@
 // FSM only drives valid_in and data_in when arb_grant is asserted.
 // ACK signals (ack_in) are event triggers for completion of each operation (read, hash, write).
 
-module sha_fsm #(
+module ctrl_fsm #(
     parameter ADDRW = 24,
     parameter ACCEL_ID = 2'b11
 )(
