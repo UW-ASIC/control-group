@@ -228,7 +228,20 @@ module deserializer_tb;
     ready_in = 1'b1;
     #600;
 
-    // 5) Randomized instruction test
+    // 5) CS_n change mid-transfer (discard partial data)
+    $display("[%0t] TEST5: CS_n change mid-transfer, no valid output expected", $time);
+    ready_in = 1'b1;
+    send_partial_then_abort(instrA, SHIFT_W/2); // Send half of instrA
+    #40; // Ensure the system doesn't assert valid_out yet
+    cs_n = 1'b1; // Deassert cs_n during transfer
+    #400;
+
+    // 6) Partial word reset (cs_n high mid-transfer)
+    $display("[%0t] TEST6: Partial word reset; cs_n deasserted", $time);
+    send_partial_then_abort(instrB, SHIFT_W/2); // Send half of instrB
+    #400;
+
+    // 7) Randomized instruction test
     $display("[%0t] TEST5: Randomized instruction test", $time);
     repeat (8) begin
       random_valid  = 1'b1; // set to 0 sometimes if you want to test that path
