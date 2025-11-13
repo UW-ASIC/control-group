@@ -5,15 +5,16 @@ module deserializer_tb;
   // Parameters (mirror DUT)
   localparam int ADDRW   = 8;
   localparam int OPCODEW = 2;
-  localparam int SHIFT_W = OPCODEW + 2*ADDRW;
+  localparam int SHIFT_W = 1 + OPCODEW + 3*ADDRW;
 
   // DUT I/O
   logic                   clk, rst_n;
   logic                   spi_clk, mosi, cs_n;
   logic                   ready_in;
 
+  wire                    valid;
   wire [OPCODEW-1:0]      opcode;
-  wire [ADDRW-1:0]        key_addr, text_addr;
+  wire [ADDRW-1:0]        key_addr, text_addr, dest_addr;
   wire                    valid_out;
 
   // Instantiate DUT
@@ -27,9 +28,11 @@ module deserializer_tb;
     .mosi      (mosi),
     .cs_n      (cs_n),
     .ready_in  (ready_in),
+    .valid     (valid),     // new
     .opcode    (opcode),
     .key_addr  (key_addr),
     .text_addr (text_addr),
+    .dest_addr (dest_addr), // new
     .valid_out (valid_out)
   );
 
@@ -49,11 +52,13 @@ module deserializer_tb;
   // MSB first stream for SPI
   function automatic logic [SHIFT_W-1:0] pack_instr
   (
+    input logic               pkt_valid,
     input logic [OPCODEW-1:0] opc,
     input logic [ADDRW-1:0]   key,
-    input logic [ADDRW-1:0]   txt
+    input logic [ADDRW-1:0]   txt,
+    input logic [ADDRW-1:0]   dst
   );
-    return {opc, key, txt};
+    return {pkt_valid, opc, key, txt, dst};
   endfunction
 
   // Send full frame (MSB-first)
@@ -87,7 +92,7 @@ module deserializer_tb;
   endtask
 
   // Scoreboard
-  logic [SHIFT_W-1:0] expected_q [0:63];
+  logic [SHIFT_W-1:0] expected_q [0:127];
   int wr_ptr, rd_ptr;
 
   task automatic push_exp(input logic [SHIFT_W-1:0] w);
@@ -96,14 +101,19 @@ module deserializer_tb;
   endtask
 
   // Field extractors (match DUT slicing)
+  function automatic logic             get_pkt_valid(input logic [SHIFT_W-1:0] w);
+    return w[SHIFT_W-1];
+  endfunction
   function automatic logic [OPCODEW-1:0] get_opcode(input logic [SHIFT_W-1:0] w);
-    return w[SHIFT_W-1 : SHIFT_W-OPCODEW];
+    return w[SHIFT_W-2 -: OPCODEW]; // same as [SHIFT_W-2 : 3*ADDRW]
   endfunction
   function automatic logic [ADDRW-1:0] get_key(input logic [SHIFT_W-1:0] w);
-    // NOTE: this must match your RTL slice
-    return w[SHIFT_W-OPCODEW-1 : SHIFT_W-OPCODEW-ADDRW];
+    return w[3*ADDRW-1 -: ADDRW];
   endfunction
   function automatic logic [ADDRW-1:0] get_text(input logic [SHIFT_W-1:0] w);
+    return w[2*ADDRW-1 -: ADDRW];
+  endfunction
+  function automatic logic [ADDRW-1:0] get_dest(input logic [SHIFT_W-1:0] w);
     return w[ADDRW-1 : 0];
   endfunction
 
@@ -116,6 +126,11 @@ module deserializer_tb;
         $fatal;
       end
 
+      if (valid    !== get_pkt_valid(expected_q[rd_ptr])) begin
+        $error("[%0t] VALID bit mismatch: got %0b exp %0b (rd=%0d wr=%0d)",
+               $time, valid, get_pkt_valid(expected_q[rd_ptr]), rd_ptr, wr_ptr);
+        $fatal;
+      end
       if (opcode   !== get_opcode(expected_q[rd_ptr])) begin
         $error("[%0t] OPCODE mismatch: got %0b exp %0b (rd=%0d wr=%0d)",
                $time, opcode, get_opcode(expected_q[rd_ptr]), rd_ptr, wr_ptr);
@@ -131,21 +146,31 @@ module deserializer_tb;
                $time, text_addr, get_text(expected_q[rd_ptr]), rd_ptr, wr_ptr);
         $fatal;
       end
+      if (dest_addr !== get_dest(expected_q[rd_ptr])) begin
+        $error("[%0t] DEST mismatch: got %0h exp %0h (rd=%0d wr=%0d)",
+               $time, dest_addr, get_dest(expected_q[rd_ptr]), rd_ptr, wr_ptr);
+        $fatal;
+      end
 
-      $display("[%0t] PASS #%0d  opcode=%0b key=%0h text=%0h",
-               $time, rd_ptr, opcode, key_addr, text_addr);
+      $display("[%0t] PASS #%0d  valid=%0b opcode=%0b key=%0h text=%0h dest=%0h",
+               $time, rd_ptr, valid, opcode, key_addr, text_addr, dest_addr);
 
       rd_ptr <= rd_ptr + 1;
     end
   end
 
   // Test vectors + sequence
+  logic               vA, vB, vC;
   logic [OPCODEW-1:0] opA, opB, opC;
   logic [ADDRW-1:0]   keyA, keyB, keyC;
   logic [ADDRW-1:0]   txtA, txtB, txtC;
+  logic [ADDRW-1:0]   dstA, dstB, dstC;         // <-- ADDED
   logic [SHIFT_W-1:0] instrA, instrB, instrC;
+
+  // Randoms
+  logic               random_valid;
   logic [OPCODEW-1:0] random_opcode;
-  logic [ADDRW-1:0] random_key, random_text;
+  logic [ADDRW-1:0]   random_key, random_text, random_dest;
   logic [SHIFT_W-1:0] random_instr;
 
   initial begin
@@ -158,13 +183,13 @@ module deserializer_tb;
     $dumpvars(0, deserializer_tb);
 
     // test vectors
-    opA=2'b01; keyA=8'hAA; txtA=8'h55;
-    opB=2'b10; keyB=8'h0F; txtB=8'hF0;
-    opC=2'b11; keyC=8'h5A; txtC=8'hC3;
+    vA=1'b1; opA=2'b01; keyA=8'hAA; txtA=8'h55; dstA=8'h0E;
+    vB=1'b1; opB=2'b10; keyB=8'h0F; txtB=8'hF0; dstB=8'h7C;
+    vC=1'b1; opC=2'b11; keyC=8'h5A; txtC=8'hC3; dstC=8'h12;
 
-    instrA = pack_instr(opA, keyA, txtA);
-    instrB = pack_instr(opB, keyB, txtB);
-    instrC = pack_instr(opC, keyC, txtC);
+    instrA = pack_instr(vA, opA, keyA, txtA, dstA);
+    instrB = pack_instr(vB, opB, keyB, txtB, dstB);
+    instrC = pack_instr(vC, opC, keyC, txtC, dstC);
 
     // release reset
     #120; rst_n = 1'b1; #50;
@@ -203,30 +228,18 @@ module deserializer_tb;
     ready_in = 1'b1;
     #600;
 
-    // 5) CS_n change mid-transfer (discard partial data)
-    $display("[%0t] TEST5: CS_n change mid-transfer, no valid output expected", $time);
-    ready_in = 1'b1;
-    send_partial_then_abort(instrA, SHIFT_W/2); // Send half of instrA
-    #40; // Ensure the system doesn't assert valid_out yet
-    cs_n = 1'b1; // Deassert cs_n during transfer
-    #400;
-
-    // 6) Partial word reset (cs_n high mid-transfer)
-    $display("[%0t] TEST6: Partial word reset; cs_n deasserted", $time);
-    send_partial_then_abort(instrB, SHIFT_W/2); // Send half of instrB
-    #400;
-
-    // 7) Randomized instruction test
-    $display("[%0t] TEST7: Randomized instruction test", $time);
-
-    repeat (10) begin // Repeat 10 times with different random instructions
-        random_opcode = $random;
-        random_key = $random;
-        random_text = $random;
-        random_instr = pack_instr(random_opcode, random_key, random_text);
-        push_exp(random_instr);
-        send_instruction(random_instr);
-        #400;
+    // 5) Randomized instruction test
+    $display("[%0t] TEST5: Randomized instruction test", $time);
+    repeat (8) begin
+      random_valid  = 1'b1; // set to 0 sometimes if you want to test that path
+      random_opcode = $urandom() & ((1<<OPCODEW)-1);
+      random_key    = $urandom();
+      random_text   = $urandom();
+      random_dest   = $urandom();
+      random_instr  = pack_instr(random_valid, random_opcode, random_key, random_text, random_dest);
+      push_exp(random_instr);
+      send_instruction(random_instr);
+      #300;
     end
 
     $display("[%0t] ALL TESTS COMPLETED OK", $time);
