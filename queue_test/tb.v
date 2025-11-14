@@ -7,11 +7,7 @@
 module tb ();
 
   // Dump the signals to a VCD file. You can view it with gtkwave or surfer.
-  initial begin
-    $dumpfile("tb.vcd");
-    $dumpvars(0, tb);
-    #1;
-  end
+
   localparam integer ADDRW_TB  = 24;
   localparam integer OPCODEW_TB = 2;
   localparam integer QDEPTH_TB = 16;
@@ -35,7 +31,11 @@ module tb ();
   wire ready_out_sha;
 
   // Replace tt_um_example with your module name:
-  req_queue #(.ADDRW(ADDRW_TB), .OPCODEW(OPCODEW_TB), .QDEPTH(QDEPTH_TB)) req_queue (
+  req_queue #(
+    .ADDRW(ADDRW_TB), 
+    .OPCODEW(OPCODEW_TB), 
+    .QDEPTH(QDEPTH_TB)
+  ) dut (
       .clk(clk),
       .rst_n(rst_n),
       .valid_in(valid_in),
@@ -53,5 +53,12 @@ module tb ();
       .ready_out_sha(ready_out_sha)
   );
 
+  initial begin
+    $dumpfile("tb.vcd");
+    $dumpvars(0, tb);
+    #1;
+  end
 
 endmodule
+
+`default_nettype  wire
