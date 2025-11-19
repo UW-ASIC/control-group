@@ -13,7 +13,7 @@ module tb ();
     #1;
   end
   localparam integer VALIDW     = 1;
-  localparam integer ADDRW_TB   = 23;
+  localparam integer ADDRW_TB   = 24;
   // Wire up the inputs and outputs:
   wire clk;
   wire rst_n;

@@ -1,5 +1,5 @@
 module serializer #(
-    parameter ADDRW = 23,
+    parameter ADDRW = 24,
     parameter VALIDW = 1
 ) (
     input wire clk,
@@ -29,7 +29,7 @@ module serializer #(
     localparam integer CW       = clog2(SHIFT_W + 1);     //addrw + valid width 
 
     reg [CW-1:0] cnt;                               //count reg
-    reg [SHIFT_W-1:0] PISOreg;                      //ASSUMES 23 -> [VALID][ADDRW] -> 0, left shift 
+    reg [SHIFT_W-1:0] PISOreg;                      //ASSUMES 25 -> [VALID][ADDRW] -> 0, left shift 
     reg [1:0] clkstat;                              //clock for spi
     wire negedgeSPI = (clkstat == 2'b10);           //detect edge
     wire [VALIDW-1:0] validSig = {VALIDW{1'b1}};    //I dont think this is particularly what you want...
