@@ -1,6 +1,6 @@
 module serializer #(
-    parameter ADDRW = 8,
-    parameter OPCODEW = 2
+    parameter ADDRW = 23,
+    parameter VALIDW = 1
 ) (
     input wire clk,
     input wire rst_n,       
@@ -8,7 +8,7 @@ module serializer #(
     input wire spi_clk,
     input wire valid_in,
 
-    input wire [OPCODEW-1:0]    opcode,
+    // input wire [VALIDW-1:0]    opcode,
     input wire [ADDRW-1:0]      addr,
 
     output reg  miso,
@@ -25,13 +25,14 @@ module serializer #(
         end
     endfunction
 
-    localparam integer SHIFT_W  = ADDRW + OPCODEW;
-    localparam integer CW       = clog2(SHIFT_W + 1);     //addrw + opcode width 
+    localparam integer SHIFT_W  = ADDRW + VALIDW;
+    localparam integer CW       = clog2(SHIFT_W + 1);     //addrw + valid width 
 
-    reg [CW-1:0] cnt;                           //count reg
-    reg [SHIFT_W-1:0] PISOreg;                  //ASSUMES [opcode][ADDRW], left shift
-    reg [1:0] clkstat;                          //clock for spi
-    wire negedgeSPI = (clkstat == 2'b10);       //detect edge
+    reg [CW-1:0] cnt;                               //count reg
+    reg [SHIFT_W-1:0] PISOreg;                      //ASSUMES 23 -> [VALID][ADDRW] -> 0, left shift 
+    reg [1:0] clkstat;                              //clock for spi
+    wire negedgeSPI = (clkstat == 2'b10);           //detect edge
+    wire [VALIDW-1:0] validSig = {VALIDW{1'b1}};    //I dont think this is particularly what you want...
     
     reg [1:0] sync_n_cs;                       //sync reg
     reg [1:0] hist;                            //similar to clockstat, used to detect held values. 
@@ -92,10 +93,10 @@ module serializer #(
         end
         else if (~valid_ncs) begin
             if (valid_in && ready_out == 1 && negedgeSPI) begin
-                PISOreg     <= {opcode , addr};
+                PISOreg     <= {validSig , addr};
                 ready_out   <= 0;
                 cnt         <= (SHIFT_W-1);
-                miso        <= opcode[OPCODEW-1];
+                miso        <= validSig[VALIDW-1];
             end else if (negedgeSPI && !ready_out) begin
                 miso        <= PISOreg[SHIFT_W-2];
                 PISOreg     <= {PISOreg[SHIFT_W-1:0], 1'b0};
