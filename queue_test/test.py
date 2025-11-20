@@ -100,7 +100,7 @@ async def pop_sha(dut, expect_valid=True):
 async def req_queue_full_suite(dut):
     """Comprehensive directed + random test for req_queue."""
 
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
     await reset(dut)
 
     # --- 1) Reset behavior ----------------------------------------------------
@@ -373,7 +373,7 @@ async def req_queue_full_suite(dut):
 @cocotb.test()
 async def test_simultaneous_push_pop(dut):
     """Test simultaneous push and pop operations (throughput test)."""
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
     await reset(dut)
     
     dut._log.info("Testing simultaneous push/pop for maximum throughput")
@@ -440,7 +440,7 @@ async def test_simultaneous_push_pop(dut):
 @cocotb.test()
 async def test_both_queues_simultaneous(dut):
     """Test both queues operating simultaneously."""
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
     await reset(dut)
     
     dut._log.info("Testing simultaneous operations on both queues")
@@ -520,7 +520,7 @@ async def test_both_queues_simultaneous(dut):
 @cocotb.test()
 async def test_wraparound_stress(dut):
     """Stress test pointer wraparound in circular buffer."""
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
     await reset(dut)
     
     dut._log.info("Testing circular buffer wraparound stress")
@@ -596,7 +596,7 @@ async def test_wraparound_stress(dut):
 @cocotb.test()
 async def test_reset_during_operation(dut):
     """Test reset behavior during active operation."""
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
     await reset(dut)
     
     dut._log.info("Testing reset during operation")
@@ -664,7 +664,7 @@ async def test_reset_during_operation(dut):
 @cocotb.test()
 async def test_multi_cycle_valid_in(dut):
     """Test behavior when valid_in stays high for multiple cycles."""
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
     await reset(dut)
     
     dut._log.info("Testing multi-cycle valid_in behavior")
@@ -705,7 +705,7 @@ async def test_multi_cycle_valid_in(dut):
 @cocotb.test()
 async def test_full_queue_persistent_valid(dut):
     """Test that full queue properly rejects with persistent valid_in."""
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
     await reset(dut)
     
     dut._log.info("Testing full queue with persistent valid_in")
@@ -756,7 +756,7 @@ async def test_full_queue_persistent_valid(dut):
 @cocotb.test()
 async def test_almost_full_boundary(dut):
     """Test operations at almost-full boundary."""
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
     await reset(dut)
     
     dut._log.info("Testing almost-full boundary conditions")
@@ -811,7 +811,7 @@ async def test_almost_full_boundary(dut):
 @cocotb.test()
 async def test_undefined_opcodes(dut):
     """Test behavior with undefined opcodes 0b10 and 0b11."""
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
     await reset(dut)
     
     dut._log.info("Testing undefined opcodes")
