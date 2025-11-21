@@ -17,7 +17,7 @@ module req_queue #(
     output wire [3 * ADDRW + OPCODEW - 1:0] instr_aes,
     output wire valid_out_aes,
     output wire ready_out_aes,
-    output wire [3 * ADDRW + OPCODEW - 1:0] instr_sha,
+    output wire [2 * ADDRW + OPCODEW - 1:0] instr_sha,
     output wire valid_out_sha,
     output wire ready_out_sha
 );
@@ -39,14 +39,15 @@ module req_queue #(
         for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, shaQueue[i]);
     end
 
-    localparam integer INSTRW = 3 * ADDRW + OPCODEW;
+    localparam integer SHA_INSTRW = 2 * ADDRW + OPCODEW;
+    localparam integer AES_INSTRW = 3 * ADDRW + OPCODEW;
     localparam integer IDXW = clog2(QDEPTH);
 
-    reg [INSTRW - 1:0] aesQueue [QDEPTH - 1:0];
+    reg [AES_INSTRW - 1:0] aesQueue [QDEPTH - 1:0];
     reg [IDXW - 1:0] aesReadIdx;
     reg [IDXW - 1:0] aesWriteIdx;
     reg aesFull;
-    reg [INSTRW - 1:0] shaQueue [QDEPTH - 1:0];
+    reg [SHA_INSTRW - 1:0] shaQueue [QDEPTH - 1:0];
     reg [IDXW - 1:0] shaReadIdx;
     reg [IDXW - 1:0] shaWriteIdx;
     reg shaFull;
@@ -61,11 +62,11 @@ module req_queue #(
     always @(posedge clk or negedge rst_n) begin 
         if (!rst_n) begin
             integer i;
-            for (i = 0; i < QDEPTH; i = i + 1) aesQueue[i] <= {INSTRW{1'b0}};
+            for (i = 0; i < QDEPTH; i = i + 1) aesQueue[i] <= {AES_INSTRW{1'b0}};
             aesReadIdx <= {IDXW{1'b0}};
             aesWriteIdx <= {IDXW{1'b0}};
             aesFull <= 0;
-            for (i = 0; i < QDEPTH; i = i + 1) shaQueue[i] <= {INSTRW{1'b0}};
+            for (i = 0; i < QDEPTH; i = i + 1) shaQueue[i] <= {SHA_INSTRW{1'b0}};
             shaReadIdx <= {IDXW{1'b0}};
             shaWriteIdx <= {IDXW{1'b0}};
             shaFull <= 0;
@@ -82,7 +83,7 @@ module req_queue #(
                 end
                 if (ready_out_sha) begin
                     if (opcode[0] == 1) begin
-                        shaQueue[shaWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
+                        shaQueue[shaWriteIdx] <= {opcode, text_addr, dest_addr};
                         shaWriteIdx <= (shaWriteIdx + 1) % QDEPTH;
                         if (shaReadIdx == (shaWriteIdx + 1) % QDEPTH) begin
                             shaFull <= 1;
