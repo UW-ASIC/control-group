@@ -27,16 +27,16 @@
 // FSM only drives valid_in and data_in when arb_grant is asserted.
 // ACK signals (ack_in) are event triggers for completion of each operation (read, hash, write).
 
-module ctrl_fsm #(
+module sha_fsm #(
     parameter ADDRW = 24,
-    parameter ACCEL_ID = 2'b11
+    parameter ACCEL_ID = 2'b01
 )(
     input  wire              clk,
     input  wire              rst_n,
 
     // Request queue interface
     input  wire              req_valid,
-    input  wire [3*ADDRW+1:0] req_data,
+    input  wire [2*ADDRW+1:0] req_data,
     output reg               ready_req_out,     // tells input req queue to release
 
     input wire               comq_ready_in,
@@ -58,20 +58,18 @@ module ctrl_fsm #(
 
     // FSM states
     localparam READY        = 4'b0000;
-    localparam RDKEY        = 4'b0001;
-    localparam WAIT_RDKEY   = 4'b0010;
-    localparam RDTEXT       = 4'b0011;
-    localparam WAIT_RDTXT   = 4'b0100;
-    localparam HASHOP       = 4'b0101;
-    localparam WAIT_HASHOP  = 4'b0110;
-    localparam MEMWR        = 4'b0111;
-    localparam WAIT_MEMWR   = 4'b1000;
-    localparam COMPLETE     = 4'b1001;
+    localparam RDTEXT       = 4'b0001;
+    localparam WAIT_RDTXT   = 4'b0010;
+    localparam HASHOP       = 4'b0011;
+    localparam WAIT_HASHOP  = 4'b0100;
+    localparam MEMWR        = 4'b0101;
+    localparam WAIT_MEMWR   = 4'b0110;
+    localparam COMPLETE     = 4'b0111;
 
     reg [3:0] state, next_state;
 
     // Request buffer
-    reg [3*ADDRW+1:0] r_req_data;
+    reg [2*ADDRW+1:0] r_req_data;
 
     //---------------------------------
     // State Register
@@ -91,14 +89,6 @@ module ctrl_fsm #(
         case (state)
             READY: begin
                 if (req_valid) next_state = RDKEY;
-            end
-
-            RDKEY: begin
-                if (arb_grant) next_state = WAIT_RDKEY;
-            end
-
-            WAIT_RDKEY: begin
-                if (ack_in == {1'b1, MEM_ID}) next_state = RDTEXT;
             end
 
             RDTEXT: begin
@@ -145,13 +135,6 @@ module ctrl_fsm #(
         case (state) 
             READY: begin
                 ready_req_out = 1'b1;
-            end
-            RDKEY: begin
-                arb_req = 1'b1;
-                data_out = {r_req_data[3*ADDRW-1:2*ADDRW], 2'b00, ACCEL_ID, MEM_ID, 2'b00};
-            end
-            WAIT_RDKEY: begin
-                data_out = {r_req_data[3*ADDRW-1:2*ADDRW], 2'b00, ACCEL_ID, MEM_ID, 2'b00};
             end
             RDTEXT: begin
                 arb_req = 1'b1;
