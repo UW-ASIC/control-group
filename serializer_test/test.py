@@ -3,7 +3,23 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, ReadOnly, FallingEdge, ReadWrite, Timer, with_timeout, SimTimeoutError
+
+from cocotb.triggers import (
+    RisingEdge,
+    ReadOnly,
+    FallingEdge,
+    ReadWrite,
+    Timer,
+    with_timeout,
+)
+
+# SimTimeoutError moved between cocotb versions; try both locations
+try:
+    # cocotb >= 2.0
+    from cocotb.triggers import SimTimeoutError
+except ImportError:
+    # cocotb 1.x
+    from cocotb.result import SimTimeoutError
 import random
 
 def bitList(value: int, width: int):
@@ -124,9 +140,9 @@ async def test_project(dut):
     dut._log.info("Start")
 
     # Set the clock period to 10 us (1000 KHz)
-    clock = Clock(dut.clk, 1, unit="us")
+    clock = Clock(dut.clk, 1, units="us")
     #Slower SPI clocks (100 KHz), you could even randomize this...
-    spiclk = Clock(dut.spi_clk, 10, unit="us") 
+    spiclk = Clock(dut.spi_clk, 10, units="us") 
 
     cocotb.start_soon(clock.start())
     cocotb.start_soon(spiclk.start())
