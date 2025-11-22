@@ -15,9 +15,6 @@
 // data_in[7:0]: to data bus
 // valid_in: data valid when sending
 
-module sha_fsm ();
-
-endmodule
 // -------------
 // Notes:
 // -------------
