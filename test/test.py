@@ -11,6 +11,18 @@ from cocotb.triggers import ClockCycles, RisingEdge, First
 
 
 
+# helper function to build instructions to test
+
+def build_instr(valid, encdec, aes_sha, key, text, dest):
+    instr = 0
+    instr |= (valid & 1) << 73
+    instr |= (encdec & 1) << 72
+    instr |= (aes_sha & 1) << 71
+    instr |= (key  & 0xFFFFFF) << 48
+    instr |= (text & 0xFFFFFF) << 24
+    instr |= (dest & 0xFFFFFF)
+    return instr
+
 # reset top level values
 
 async def reset_top(dut):
@@ -48,41 +60,59 @@ async def get_spi_out(dut):
     return bits
 
 
+async def deserializer_test(dut, testval):
+    await RisingEdge(dut.valid)
+
+    assert dut.key_addr.value == (testval >> 48) & 0xFFFFFF, \
+        f"Expected key_addr: {(testval >> 48) & 0xFFFFFF} Actual key_addr: {dut.key_addr.value}"
+    assert dut.text_addr.value == (testval >> 24) & 0xFFFFFF, \
+        f"Expected text_addr: {(testval >> 24) & 0xFFFFFF} Actual text_addr: {dut.text_addr.value}"
+    assert dut.dest_addr.value  == testval & 0xFFFFFF, \
+        f"Expected dest_addr: {testval & 0xFFFFFF} Actual dest_addr: {dut.dest_addr.value}"
+    dut._log.info("Deserializer test passed")
+
+
+async def req_queue_test(dut, testval):
+    await First(
+        RisingEdge(dut.valid_out_aes),
+        RisingEdge(dut.valid_out_sha)
+    )
+    opcode_is_sha = (testval >> 72) & 0x1
+    if opcode_is_sha:
+        assert dut.valid_out_aes.value == 0, "AES value is 1 when expected to be 0"
+        assert dut.valid_out_sha.value == 1, "SHA value is 0 when expected to be 1"
+    else:
+        assert dut.valid_out_aes.value == 1, "AES value is 0 when expected to be 1"
+        assert dut.valid_out_sha.value == 0, "SHA value is 1 when expected to be 0"
+    dut._log.info("AES/SHA routing test passed")
+        
+
+
 @cocotb.test()
 async def test_project(dut):
     dut._log.info("Start")
 
     # Set the clock period to 10 us (100 KHz)
     clock = Clock(dut.clk, 10, units="us")
+    spi_clock = Clock(dut.spi_clk, 10, units="us")
     cocotb.start_soon(clock.start())
+    cocotb.start_soon(spi_clock.start())
 
     # Reset
     dut._log.info("Resetting top inputs")
     await reset_top(dut)
 
     # Send test value in
-    testval_in = 0
+    testval_in = build_instr(0x1, 0x0, 0x0, 0x112233, 0x445566, 0x778899)
     await send_spi_in(testval_in)
-    await RisingEdge(dut.valid)
 
-    assert dut.key_addr == (testval_in >> 48) & 0xFFFFFF
-    assert dut.text_addr == (testval_in >> 24) & 0xFFFFFF
-    assert dut.dest_addr == testval_in & 0xFFFFFF
+    # Check expected address values (deserializer)
+    await deserializer_test(dut, testval_in)
 
 
     # Check expected behavior based on 'AES/SHA' bit
-    await First(
-        RisingEdge(dut.valid_out_aes),
-        RisingEdge(dut.valid_out_sha)
-    )
-    opcode_is_sha = (testval_in >> 72) & 0x1
-    if opcode_is_sha:
-        assert dut.valid_out_aes.value == 0
-        assert dut.valid_out_sha.value == 1
-    else:
-        assert dut.valid_out_aes.value == 1
-        assert dut.valid_out_sha.value == 0
-        
+    await req_queue_test()
+    testval_in = build_instr(0x1, 0x0, 0x1, 0x112233, 0x445566, 0x778899)
 
     # Wait for operation to finish and check comp queue behavior
     await RisingEdge(dut.compq_valid_out)
