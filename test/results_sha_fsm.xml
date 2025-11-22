@@ -1,0 +1,13 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1763752603" />
+    <testcase name="test_reset" classname="test_sha_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_sha_fsm.py" lineno="137" time="0.0031838417053222656" sim_time_ns="60.001" ratio_time="18845.47209105886" />
+    <testcase name="test_single_transaction" classname="test_sha_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_sha_fsm.py" lineno="158" time="0.010616302490234375" sim_time_ns="249.99999999999997" ratio_time="23548.68846568451" />
+    <testcase name="test_backpressure_on_bus" classname="test_sha_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_sha_fsm.py" lineno="263" time="0.006003856658935547" sim_time_ns="180.0" ratio_time="29980.72909220872" />
+    <testcase name="test_completion_queue_backpressure" classname="test_sha_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_sha_fsm.py" lineno="305" time="0.005457401275634766" sim_time_ns="270.0" ratio_time="49474.09698558322" />
+    <testcase name="test_multiple_transactions" classname="test_sha_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_sha_fsm.py" lineno="364" time="0.008934259414672852" sim_time_ns="520.0" ratio_time="58202.921570197206" />
+    <testcase name="test_reset_during_operation" classname="test_sha_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_sha_fsm.py" lineno="417" time="0.0032987594604492188" sim_time_ns="180.0" ratio_time="54565.96704249783" />
+    <testcase name="test_comparison_with_aes" classname="test_sha_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_sha_fsm.py" lineno="454" time="0.0058863162994384766" sim_time_ns="210.0" ratio_time="35675.96257442586" />
+    <testcase name="test_data_output_format" classname="test_sha_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_sha_fsm.py" lineno="503" time="0.004866123199462891" sim_time_ns="170.0" ratio_time="34935.40813326801" />
+  </testsuite>
+</testsuites>

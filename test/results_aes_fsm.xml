@@ -1,0 +1,13 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1763753060" />
+    <testcase name="test_reset" classname="test_aes_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_aes_fsm.py" lineno="139" time="0.00180816650390625" sim_time_ns="60.001" ratio_time="33183.337856540085" />
+    <testcase name="test_single_transaction" classname="test_aes_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_aes_fsm.py" lineno="160" time="0.0036079883575439453" sim_time_ns="280.0" ratio_time="77605.57192889712" />
+    <testcase name="test_backpressure_on_bus" classname="test_aes_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_aes_fsm.py" lineno="274" time="0.001558065414428711" sim_time_ns="170.0" ratio_time="109109.66794185157" />
+    <testcase name="test_completion_queue_backpressure" classname="test_aes_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_aes_fsm.py" lineno="315" time="0.0031321048736572266" sim_time_ns="290.0" ratio_time="92589.49227373069" />
+    <testcase name="test_multiple_transactions" classname="test_aes_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_aes_fsm.py" lineno="378" time="0.003957271575927734" sim_time_ns="580.0" ratio_time="146565.62959392698" />
+    <testcase name="test_reset_during_operation" classname="test_aes_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_aes_fsm.py" lineno="439" time="0.0021359920501708984" sim_time_ns="170.0" ratio_time="79588.31119544592" />
+    <testcase name="test_data_output_format" classname="test_aes_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_aes_fsm.py" lineno="475" time="0.0025382041931152344" sim_time_ns="190.0" ratio_time="74856.07364268269" />
+    <testcase name="test_req_valid_hold" classname="test_aes_fsm" file="C:\Users\harry\Desktop\WaterlooEng\DesignTeams\UW_ASIC\control-group\test\test_aes_fsm.py" lineno="542" time="0.0011658668518066406" sim_time_ns="180.0" ratio_time="154391.5582822086" />
+  </testsuite>
+</testsuites>
