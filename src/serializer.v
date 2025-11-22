@@ -95,7 +95,7 @@ module serializer #(
                 cnt         <= (SHIFT_W-1);
                 miso        <= 1'b1;
             end else if (negedgeSPI && !ready_out) begin
-                miso        <= PISOreg[SHIFT_W-2];
+                miso        <= PISOreg[SHIFT_W-1];
                 PISOreg     <= {PISOreg[SHIFT_W-1:0], 1'b0};
 
                 if (cnt != 1) begin
