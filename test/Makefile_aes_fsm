@@ -1,0 +1,31 @@
+# Makefile for cocotb simulation of aes_fsm
+# Place in: control-group/test/
+# Usage: make -f Makefile_aes_fsm
+
+# Simulator
+SIM ?= icarus
+
+# Top-level module
+TOPLEVEL_LANG ?= verilog
+
+# RTL source from ../src/ directory
+VERILOG_SOURCES = $(PWD)/aes_fsm_tb.v $(PWD)/../src/aes_fsm.v
+
+# Testbench module name
+TOPLEVEL = aes_fsm_tb
+
+# Python test module
+MODULE = test_aes_fsm
+
+# Unique VCD output name
+COCOTB_RESULTS_FILE = results_aes_fsm.xml
+
+# Include cocotb's make rules
+include $(shell cocotb-config --makefiles)/Makefile.sim
+
+# Cleanup
+clean::
+	rm -rf __pycache__ sim_build aes_fsm_tb.vcd results_aes_fsm.xml
+	rm -f *.o *.vvp
+
+.PHONY: clean

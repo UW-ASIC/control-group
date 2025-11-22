@@ -7,7 +7,6 @@
 // req_data[2*ADDRW+1:0]: the instruction itself
 // arb_grant: from arbiter (FSM can use the bus now)
 // ack_in[2:0]: ACKs for read/write/hash complete
-
 // --------------
 // New Outputs:
 // --------------
@@ -88,7 +87,7 @@ module sha_fsm #(
         next_state = state;
         case (state)
             READY: begin
-                if (req_valid) next_state = RDKEY;
+                if (req_valid) next_state = RDTEXT;
             end
 
             RDTEXT: begin
@@ -136,39 +135,50 @@ module sha_fsm #(
             READY: begin
                 ready_req_out = 1'b1;
             end
+
             RDTEXT: begin
                 arb_req = 1'b1;
                 data_out = {r_req_data[2*ADDRW-1:ADDRW], 2'b00, ACCEL_ID, MEM_ID, 2'b01};
             end
+
             WAIT_RDTXT: begin
                 data_out = {r_req_data[2*ADDRW-1:ADDRW], 2'b00, ACCEL_ID, MEM_ID, 2'b01};
             end
+
             HASHOP: begin
                 arb_req = 1'b1;
                 data_out = {24'b0, r_req_data[73], 1'b0, ACCEL_ID, 4'b0011};
             end
+
             WAIT_HASHOP: begin
                 data_out = {24'b0, r_req_data[73], 1'b0, ACCEL_ID, 4'b0011};
             end
+
             MEMWR: begin
                 arb_req = 1'b1;
                 data_out = {r_req_data[ADDRW-1:0], 2'b00, MEM_ID, ACCEL_ID, 2'b10};
             end
+
             WAIT_MEMWR: begin
                 data_out = {r_req_data[ADDRW-1:0], 2'b00, MEM_ID, ACCEL_ID, 2'b10};
             end
+
             COMPLETE: begin
                 compq_data_out = {r_req_data[ADDRW-1:0]};
                 valid_compq_out = 1'b1;
             end
+
             default: begin
+                // already zeroed above
             end
         endcase
     end
 
-    // Load data from req queue into regs
-    always @(posedge clk) begin
-        if (req_valid && state == READY) begin
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            r_req_data <= '0;
+        end else if (req_valid && state == READY) begin
             r_req_data <= req_data;
         end
     end
