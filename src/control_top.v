@@ -14,6 +14,9 @@ module control_top (
     input  wire       rst_n     // reset_n - low to reset
 );
 
+  localparam SHA_ID = 2'b01;
+  localparam AES_ID = 2'b10;
+
   // All output pins must be assigned. If not used, assign to 0.
   assign uo_out  = ui_in + uio_in;  // Example: ou_out is the sum of ui_in and uio_in
   assign uio_out = 0;

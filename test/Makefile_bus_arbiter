@@ -1,0 +1,31 @@
+# Makefile for cocotb simulation of bus_arbiter
+# Place in: control-group/test/
+# Usage: make -f Makefile_bus_arbiter
+
+# Simulator
+SIM ?= icarus
+
+# Top-level module
+TOPLEVEL_LANG ?= verilog
+
+# RTL source from ../src/ directory
+VERILOG_SOURCES = $(PWD)/bus_arbiter_tb.v $(PWD)/../src/bus_arbiter.v
+
+# Testbench module name
+TOPLEVEL = bus_arbiter_tb
+
+# Python test module
+MODULE = test_bus_arbiter
+
+# Unique VCD output name
+COCOTB_RESULTS_FILE = results_bus_arbiter.xml
+
+# Include cocotb's make rules
+include $(shell cocotb-config --makefiles)/Makefile.sim
+
+# Cleanup
+clean::
+	rm -rf __pycache__ sim_build bus_arbiter_tb.vcd results_bus_arbiter.xml
+	rm -f *.o *.vvp
+
+.PHONY: clean

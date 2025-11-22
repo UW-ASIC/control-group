@@ -1,0 +1,31 @@
+# Makefile for cocotb simulation of sha_fsm
+# Place in: control-group/test/
+# Usage: make -f Makefile_sha_fsm
+
+# Simulator
+SIM ?= icarus
+
+# Top-level module
+TOPLEVEL_LANG ?= verilog
+
+# RTL source from ../src/ directory
+VERILOG_SOURCES = $(PWD)/sha_fsm_tb.v $(PWD)/../src/sha_fsm.v
+
+# Testbench module name
+TOPLEVEL = sha_fsm_tb
+
+# Python test module
+MODULE = test_sha_fsm
+
+# Unique VCD output name
+COCOTB_RESULTS_FILE = results_sha_fsm.xml
+
+# Include cocotb's make rules
+include $(shell cocotb-config --makefiles)/Makefile.sim
+
+# Cleanup
+clean::
+	rm -rf __pycache__ sim_build sha_fsm_tb.vcd results_sha_fsm.xml
+	rm -f *.o *.vvp
+
+.PHONY: clean
