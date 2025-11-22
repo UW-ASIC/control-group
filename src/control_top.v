@@ -34,15 +34,15 @@ module control_top #(
   wire [ADDRW-1:0] text_addr;
   wire [ADDRW-1:0] dest_addr;
   wire req_q_valid;
-  deserializer #(.ADDRW(ADDRW), .OPCODEW(OPCODEW)) deserializer_inst(.clk(clk), .rst_n(rst_n), .spi_clk(spi_clk), .mosi(mosi), .valid(valid), .opcode(opcode), .key_addr(key_addr), .text_addr(text_addr), .dest_addr(dest_addr), .valid_out(req_q_valid));
+  deserializer #(.ADDRW(ADDRW), .OPCODEW(OPCODEW)) deserializer_inst(.clk(clk), .rst_n(rst_n), .spi_clk(spi_clk), .mosi(mosi), .cs_n(cs_n), .aes_ready_in(aes_queue_ready), .sha_ready_in(sha_queue_ready), .valid(valid), .opcode(opcode), .key_addr(key_addr), .text_addr(text_addr), .dest_addr(dest_addr), .valid_out(req_q_valid));
 
   wire aes_fsm_ready, sha_fsm_ready;
   wire [AES_INSTRW] instr_aes;
   wire [SHA_INSTRW] instr_sha;
   wire valid_out_aes, valid_out_sha;
-  wire ready_out_aes, valid_out_sha;
+  wire aes_queue_ready, sha_queue_ready;
   // May need to change deserializer so that it holds instruction until req_queue is ready for aes or sha
-  req_queue #(.ADDRW(ADDRW) .OPCODEW(OPCODEW), .QDEPTH(REQ_QDEPTH)) req_queue_inst(.clk(clk), .rst_n(rst_n), .valid_in(req_q_valid), .ready_in_aes(aes_fsm_ready), .ready_in_sha(sha_fsm_ready), .opcode(opcode), .key_addr(key_addr), .text_addr(text_addr), .dest_addr(dest_addr), .instr_aes(instr_aes), .valid_out_aes(valid_out_aes), .ready_out_aes(ready_out_aes), .instr_sha(instr_sha), .valid_out_sha(valid_out_sha), .ready_out_sha(ready_out_sha));
+  req_queue #(.ADDRW(ADDRW) .OPCODEW(OPCODEW), .QDEPTH(REQ_QDEPTH)) req_queue_inst(.clk(clk), .rst_n(rst_n), .valid_in(req_q_valid), .ready_in_aes(aes_fsm_ready), .ready_in_sha(sha_fsm_ready), .opcode(opcode), .key_addr(key_addr), .text_addr(text_addr), .dest_addr(dest_addr), .instr_aes(instr_aes), .valid_out_aes(valid_out_aes), .ready_out_aes(aes_queue_ready), .instr_sha(instr_sha), .valid_out_sha(valid_out_sha), .ready_out_sha(sha_queue_ready));
 
   wire compq_ready_aes, compq_ready_sha;
   wire [ADDRW-1:0] compq_aes_data, compq_sha_data;
@@ -60,5 +60,5 @@ module control_top #(
   wire compq_ready_in;
   comp_queue #(.ADDRW(ADDRW), .QDEPTH(COMP_QDEPTH)) comp_queue_inst (.clk(clk), .rst_n(rst_n), .valid_in_aes(compq_aes_valid), .valid_in_sha(compq_sha_valid), .dest_addr_aes(compq_aes_data), .dest_addr_sha(compq_sha_data), .ready_out_aes(compq_ready_aes), .ready_out_sha(compq_ready_sha), .data_out(compq_data), .valid_out(compq_valid_out), .ready_in(compq_ready_in));
 
-  serializer #(.ADDRW(ADDRW), .OPCODEW(OPCODEW)) serializer_inst(.clk(clk), .rst_n(rst_n), .n_cs(cs_n), .spi_clk(spi_clk), .valid_in(compq_valid_out), .addr(compq_data), .miso(miso), .ready_out(compq_ready_in), .err());
+  serializer #(.ADDRW(ADDRW)) serializer_inst(.clk(clk), .rst_n(rst_n), .n_cs(cs_n), .spi_clk(spi_clk), .valid_in(compq_valid_out), .addr(compq_data), .miso(miso), .ready_out(compq_ready_in), .err());
 endmodule
