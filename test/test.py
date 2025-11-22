@@ -3,7 +3,45 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
+
+
+# reset top level values
+
+async def reset_top(dut):
+    dut.rst_n = 0
+    dut.miso.value = 0
+    dut.cs_n = 0
+    dut.ack_in = 0
+    dut.bus_ready = 0
+    await ClockCycles(dut.clk, 5)
+    dut.rst_n = 1
+    await ClockCycles(dut.clk, 2)
+    dut._log.info("Reset complete")
+
+# send values over spi
+
+async def send_spi_in(dut, cpu_test_in):
+    dut.cs.n.value = 0
+    bits = f"{cpu_test_in:074b}"
+    for bit in bits:
+        dut.mosi.value = int(bit)
+        await RisingEdge(dut.spi_clk)
+    dut._log.info(f"Bits collected by module: {bits}")
+    dut.cs_n.value = 1
+
+# collect values over spi
+
+async def get_spi_out(dut):
+    await RisingEdge(dut.valid)
+    dut.cs_n.value = 0
+    bits = ""
+    for _ in range(24):
+        await RisingEdge(dut.spi_clk)
+        bits += str(int(dut.miso_value))
+    dut.cs_n.value = 1
+    dut._log.info(f"Bits collected by CPU: {bits}")
+    return int(bits)
 
 
 @cocotb.test()
@@ -15,26 +53,25 @@ async def test_project(dut):
     cocotb.start_soon(clock.start())
 
     # Reset
-    dut._log.info("Reset")
-    dut.ena.value = 1
-    dut.ui_in.value = 0
-    dut.uio_in.value = 0
-    dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 10)
-    dut.rst_n.value = 1
+    dut._log.info("Resetting top inputs")
+    reset_top(dut)
 
-    dut._log.info("Test project behavior")
+    # Send test value in
+    testval_in = 0
+    send_spi_in(testval_in)
 
-    # Set the input values you want to test
-    dut.ui_in.value = 20
-    dut.uio_in.value = 30
+    # Check expected behavior based on 'Valid' bit
 
-    # Wait for one clock cycle to see the output values
-    await ClockCycles(dut.clk, 1)
+    # Check expected behavior based on 'Encrypt/Decrypt' bit
 
-    # The following assersion is just an example of how to check the output values.
-    # Change it to match the actual expected output of your module:
-    assert dut.uo_out.value == 50
+    # Check expected behavior based on 'AES/SHA' bit
 
-    # Keep testing the module by changing the input values, waiting for
-    # one or more clock cycles, and asserting the expected output values.
+    # Wait for operation to finish
+    await RisingEdge(dut.compq_valid_out)
+
+    # Get test value out
+    result = get_spi_out(dut)
+    dut._log.info(f"Final collected result: {result}")
+
+    # Verify test value out
+

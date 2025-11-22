@@ -5,7 +5,15 @@
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = project.v
+PROJECT_SOURCES = \
+control_top.v \
+aes_fsm.v \
+comp_queue.v \
+deserializer.v \
+req_queue.v \
+scoreboard.v \
+serializer.v \
+sha_fsm.v
 
 ifneq ($(GATES),yes)
 
@@ -16,7 +24,7 @@ VERILOG_SOURCES += $(addprefix $(SRC_DIR)/,$(PROJECT_SOURCES))
 else
 
 # Gate level simulation:
-SIM_BUILD				= sim_build/gl
+SIM_BUILD		 = sim_build/gl
 COMPILE_ARGS    += -DGL_TEST
 COMPILE_ARGS    += -DFUNCTIONAL
 COMPILE_ARGS    += -DUSE_POWER_PINS
@@ -34,8 +42,8 @@ endif
 COMPILE_ARGS 		+= -I$(SRC_DIR)
 
 # Include the testbench sources:
-VERILOG_SOURCES += $(PWD)/tb.v
-TOPLEVEL = tb
+#VERILOG_SOURCES += $(PWD)/tb.v
+TOPLEVEL = control_top
 
 # MODULE is the basename of the Python test file
 MODULE = test
