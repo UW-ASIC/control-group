@@ -175,19 +175,17 @@ module aes_fsm #(
                 data_out = {r_req_data[ADDRW-1:0], 2'b00, MEM_ID, ACCEL_ID, 2'b10};
             end
             COMPLETE: begin
-                    compq_data_out = {r_req_data[ADDRW-1:0]};
-                    valid_compq_out = 1'b1;
-                end
-                default: begin
-                end
-            endcase
+                compq_data_out = {r_req_data[ADDRW-1:0]};
+                valid_compq_out = 1'b1;
+            end
+            default: begin
+            end
+        endcase
     end
 
     // Load data from req queue into regs
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            r_req_data <= '0;
-        end else if (req_valid && state == READY) begin
+    always @(posedge clk) begin
+        if (req_valid && state == READY) begin
             r_req_data <= req_data;
         end
     end
