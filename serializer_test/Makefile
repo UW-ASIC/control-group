@@ -5,7 +5,7 @@
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)
-PROJECT_SOURCES = serializer.v
+PROJECT_SOURCES = ../src/serializer.v
 
 ifneq ($(GATES),yes)
 
