@@ -3,7 +3,12 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge, First
+
+
+# NOTE This testbench was developed based on top level template
+# It may not work correctly with finalized top level file
+
 
 
 # reset top level values
@@ -22,7 +27,7 @@ async def reset_top(dut):
 # send values over spi
 
 async def send_spi_in(dut, cpu_test_in):
-    dut.cs.n.value = 0
+    dut.cs_n.value = 0
     bits = f"{cpu_test_in:074b}"
     for bit in bits:
         dut.mosi.value = int(bit)
@@ -33,15 +38,14 @@ async def send_spi_in(dut, cpu_test_in):
 # collect values over spi
 
 async def get_spi_out(dut):
-    await RisingEdge(dut.valid)
     dut.cs_n.value = 0
     bits = ""
     for _ in range(24):
         await RisingEdge(dut.spi_clk)
-        bits += str(int(dut.miso_value))
+        bits += str(int(dut.miso.value))
     dut.cs_n.value = 1
     dut._log.info(f"Bits collected by CPU: {bits}")
-    return int(bits)
+    return bits
 
 
 @cocotb.test()
@@ -54,24 +58,42 @@ async def test_project(dut):
 
     # Reset
     dut._log.info("Resetting top inputs")
-    reset_top(dut)
+    await reset_top(dut)
 
     # Send test value in
     testval_in = 0
-    send_spi_in(testval_in)
+    await send_spi_in(testval_in)
+    await RisingEdge(dut.valid)
 
-    # Check expected behavior based on 'Valid' bit
+    assert dut.key_addr == (testval_in >> 48) & 0xFFFFFF
+    assert dut.text_addr == (testval_in >> 24) & 0xFFFFFF
+    assert dut.dest_addr == testval_in & 0xFFFFFF
 
-    # Check expected behavior based on 'Encrypt/Decrypt' bit
 
     # Check expected behavior based on 'AES/SHA' bit
+    await First(
+        RisingEdge(dut.valid_out_aes),
+        RisingEdge(dut.valid_out_sha)
+    )
+    opcode_is_sha = (testval_in >> 72) & 0x1
+    if opcode_is_sha:
+        assert dut.valid_out_aes.value == 0
+        assert dut.valid_out_sha.value == 1
+    else:
+        assert dut.valid_out_aes.value == 1
+        assert dut.valid_out_sha.value == 0
+        
 
-    # Wait for operation to finish
+    # Wait for operation to finish and check comp queue behavior
     await RisingEdge(dut.compq_valid_out)
-
+    assert dut.compq_data == testval_in & 0xFFFFFF
+    await RisingEdge(dut.compq_ready_in)
+    
     # Get test value out
-    result = get_spi_out(dut)
+    result = await int(get_spi_out(dut))
     dut._log.info(f"Final collected result: {result}")
 
-    # Verify test value out
-
+    # Verify destination address reaches CPU 
+    assert (testval_in & 0xFFFFFF) == (result & 0xFFFFFF), \
+        f"Destination address {(testval_in & 0xFFFFFF)} expected to match address of completed data text: {(result & 0xFFFFFF)}"
+        
