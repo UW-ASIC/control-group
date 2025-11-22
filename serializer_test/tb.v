@@ -12,8 +12,8 @@ module tb ();
     $dumpvars(0, tb);
     #1;
   end
-  localparam integer OPCODEW_TB = 2;
-  localparam integer ADDRW_TB   = 8;
+  localparam integer VALIDW     = 1;
+  localparam integer ADDRW_TB   = 24;
   // Wire up the inputs and outputs:
   wire clk;
   wire rst_n;
@@ -21,7 +21,7 @@ module tb ();
   wire spi_clk;
   wire valid_in;
 
-  wire [OPCODEW_TB-1:0] opcode;
+  // wire [VALIDW-1:0] valid;
   wire [ADDRW_TB-1:0] addr;
 
   reg miso;
@@ -29,13 +29,12 @@ module tb ();
   reg err;
 
   // Replace tt_um_example with your module name:
-  serializer #(.ADDRW(ADDRW_TB), .OPCODEW(OPCODEW_TB)) serializerDUT  (
+  serializer #(.ADDRW(ADDRW_TB), .VALIDW(VALIDW)) serializerDUT  (
       .clk(clk),
       .rst_n(rst_n),
       .n_cs(n_cs),
       .spi_clk(spi_clk),
       .valid_in(valid_in),
-      .opcode(opcode),
       .addr(addr),
       .miso(miso),
       .ready_out(ready_out),

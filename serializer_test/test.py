@@ -3,7 +3,23 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, ReadOnly, FallingEdge, ReadWrite, Timer, with_timeout, SimTimeoutError
+
+from cocotb.triggers import (
+    RisingEdge,
+    ReadOnly,
+    FallingEdge,
+    ReadWrite,
+    Timer,
+    with_timeout,
+)
+
+# SimTimeoutError moved between cocotb versions; try both locations
+try:
+    # cocotb >= 2.0
+    from cocotb.triggers import SimTimeoutError
+except ImportError:
+    # cocotb 1.x
+    from cocotb.result import SimTimeoutError
 import random
 
 def bitList(value: int, width: int):
@@ -15,7 +31,6 @@ async def reset(dut, cycles=2):
     dut.rst_n.value = 0
     # clear inputs
     dut.valid_in.value = 0
-    dut.opcode.value = 0
     dut.addr.value = 0
     dut.n_cs.value = 1
     for _ in range(cycles):
@@ -37,7 +52,7 @@ async def shift_and_capture(dut, width):
         out_bits.append(int(dut.miso.value))
     return out_bits
 
-async def forced_error(dut, ADDRW, SHIFT_W, addr, opcodeRaw): #Force an error by randomly raising n_cs within 1-10 clock cycles of pulling ncs low
+async def forced_error(dut, ADDRW, SHIFT_W, addr): #Force an error by randomly raising n_cs within 1-10 clock cycles of pulling ncs low
 
     errorclk = random.randint(1, 10)
     errorcnt = 0
@@ -47,7 +62,6 @@ async def forced_error(dut, ADDRW, SHIFT_W, addr, opcodeRaw): #Force an error by
 
     # Load
     dut.n_cs.value     = 0
-    dut.opcode.value   = opcodeRaw
     dut.addr.value     = addr
     dut.valid_in.value = 1
 
@@ -56,7 +70,7 @@ async def forced_error(dut, ADDRW, SHIFT_W, addr, opcodeRaw): #Force an error by
     dut.valid_in.value = 0
 
     # random.randint(1, 10)
-    for _ in range(5):
+    for _ in range(17):
         await RisingEdge(dut.spi_clk)
     dut.n_cs.value = 1
 
@@ -90,13 +104,12 @@ async def forced_error(dut, ADDRW, SHIFT_W, addr, opcodeRaw): #Force an error by
     while int(dut.ready_out.value) == 0:
         await RisingEdge(dut.spi_clk)
 
-async def send_data(dut, ADDRW, SHIFT_W, addr, opcodeRaw):
+async def send_data(dut, ADDRW, SHIFT_W, addr):
     while int(dut.ready_out.value) == 0:
         await RisingEdge(dut.clk)
 
     # Load
     dut.n_cs.value     = 0
-    dut.opcode.value   = opcodeRaw
     dut.addr.value     = addr
     dut.valid_in.value = 1
 
@@ -106,7 +119,7 @@ async def send_data(dut, ADDRW, SHIFT_W, addr, opcodeRaw):
     dut.valid_in.value = 0
     
     # Check stream
-    word     = (opcodeRaw << ADDRW) | addr
+    word     = (1 << ADDRW) | addr
     expected = bitList(word, SHIFT_W)
     got      = await shift_and_capture(dut, SHIFT_W)
 
@@ -127,16 +140,16 @@ async def test_project(dut):
     dut._log.info("Start")
 
     # Set the clock period to 10 us (1000 KHz)
-    clock = Clock(dut.clk, 1, unit="us")
+    clock = Clock(dut.clk, 1, units="us")
     #Slower SPI clocks (100 KHz), you could even randomize this...
-    spiclk = Clock(dut.spi_clk, 10, unit="us") 
+    spiclk = Clock(dut.spi_clk, 10, units="us") 
 
     cocotb.start_soon(clock.start())
     cocotb.start_soon(spiclk.start())
 
     ADDRW   = len(dut.addr)
-    OPCODEW = len(dut.opcode)
-    SHIFT_W = ADDRW + OPCODEW
+    VALIDW = 1
+    SHIFT_W = ADDRW + VALIDW
 
     # Reset
     await reset(dut)
@@ -146,16 +159,14 @@ async def test_project(dut):
     #=======================
     for _ in range(numberCycles):
         addr = (random.randrange(1 << ADDRW))
-        opcodeRaw = random.randrange(1 << OPCODEW)
-
         what_happens = random.randint(0,9)
 
         if what_happens < 6:    #send data
             print("Checking normal execution")
-            await send_data(dut, ADDRW, SHIFT_W, addr, opcodeRaw)
+            await send_data(dut, ADDRW, SHIFT_W, addr)
         elif (what_happens >= 6 and(what_happens % 2 == 0)): #force error
             print("Checking errored execution")
-            await forced_error(dut, ADDRW, SHIFT_W, addr, opcodeRaw)
+            await forced_error(dut, ADDRW, SHIFT_W, addr)
         else:   #Sit 2-10 clock cycles and do nothing. Also test gitching by fiddling with ncs and seeing if anything loads.
             print("Do nothing")
             max = random.randint(2,10)
