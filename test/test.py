@@ -97,3 +97,50 @@ async def test_project(dut):
     assert (testval_in & 0xFFFFFF) == (result & 0xFFFFFF), \
         f"Destination address {(testval_in & 0xFFFFFF)} expected to match address of completed data text: {(result & 0xFFFFFF)}"
         
+
+@cocotb.test()
+async def ack_tests(dut):
+    dut._log.info("Start Ack Bus Tests")
+
+    # Set the clock period to 10 us (100 KHz)
+    clock = Clock(dut.clk, 10, units="us")
+    cocotb.start_soon(clock.start())
+
+    # Reset
+    dut._log.info("Resetting top inputs")
+    await reset_top(dut)
+
+    # Send test value in
+    testval_in = 0
+    await send_spi_in(testval_in)
+    await RisingEdge(dut.valid)
+
+  
+
+
+    # Check expected behavior based on 'AES/SHA' bit
+    await First(
+        RisingEdge(dut.valid_out_aes),
+        RisingEdge(dut.valid_out_sha)
+    )
+    opcode_is_sha = (testval_in >> 72) & 0x1
+    if opcode_is_sha:
+        assert dut.valid_out_aes.value == 0
+        assert dut.valid_out_sha.value == 1
+    else:
+        assert dut.valid_out_aes.value == 1
+        assert dut.valid_out_sha.value == 0
+        
+
+    # Wait for operation to finish and check comp queue behavior
+    await RisingEdge(dut.compq_valid_out)
+    assert dut.compq_data == testval_in & 0xFFFFFF
+    await RisingEdge(dut.compq_ready_in)
+    
+    # Get test value out
+    result = await int(get_spi_out(dut))
+    dut._log.info(f"Final collected result: {result}")
+
+    # Verify destination address reaches CPU 
+    assert (testval_in & 0xFFFFFF) == (result & 0xFFFFFF), \
+        f"Destination address {(testval_in & 0xFFFFFF)} expected to match address of completed data text: {(result & 0xFFFFFF)}"
