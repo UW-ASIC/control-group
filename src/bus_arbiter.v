@@ -13,11 +13,16 @@ module bus_arbiter #(
     output reg [7:0] data_out,
     output reg valid_out, 
     output wire aes_grant,
-    output wire sha_grant
+    output wire sha_grant,
+    output wire [1:0] curr_mode_top,
+    output wire [1:0] counter_top
 );
 
 localparam AES = 2'b01;
 localparam SHA = 2'b10;
+
+assign curr_mode_top = curr_mode;
+assign counter_top = counter;
 
 reg last_serviced; // RR to choose a FSM to service if both simultaneously req bus
 reg [1:0] curr_mode; // 00: Inactive, 01: AES, 10: SHA
@@ -87,6 +92,9 @@ always @(posedge clk or negedge rst_n) begin
                 curr_mode <= 2'b01;
             end else if (sha_req) begin
                 curr_mode <= 2'b10;
+            end else begin
+                curr_mode <= 2'b00;
+                counter <= 2'b00;
             end
         end
 
