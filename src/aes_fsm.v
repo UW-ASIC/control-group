@@ -183,9 +183,10 @@ module aes_fsm #(
         endcase
     end
 
-    // Load data from req queue into regs
-    always @(posedge clk) begin
-        if (req_valid && state == READY) begin
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            r_req_data <= '0;
+        end else if (req_valid && state == READY) begin
             r_req_data <= req_data;
         end
     end
