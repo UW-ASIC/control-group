@@ -54,7 +54,7 @@ async def send_spi_in(dut, cpu_test_in):
 async def get_spi_out(dut):
     dut.cs_n.value = 0
     bits = ""
-    for _ in range(24):
+    for _ in range(25):
         await RisingEdge(dut.spi_clk)
         bits += str(int(dut.miso.value))
     dut.cs_n.value = 1
@@ -148,6 +148,64 @@ async def test_project(dut):
     # Verify destination address reaches CPU 
     assert (testval_in & 0xFFFFFF) == (result & 0xFFFFFF), \
         f"Destination address {(testval_in & 0xFFFFFF)} expected to match address of completed data text: {(result & 0xFFFFFF)}"
+    
+@cocotb.test()
+async def sha_test(dut):
+    dut._log.info("Single SHA Instruction")
+
+    # Set the clock period to 10 us (100 KHz)
+    clock = Clock(dut.clk, 10, units="us")
+    cocotb.start_soon(clock.start())
+
+    # Reset
+    dut._log.info("Resetting top inputs")
+    await reset_top(dut)
+
+    # Send test value in
+    valid = 1
+    encdec = 0
+    aes_sha = 1
+    key = 0
+    text = 1
+    dest = 2
+
+    testval_in = build_instr(valid, encdec, aes_sha, key, text, dest)
+    await send_spi_in(testval_in)
+    spi_data = get_spi_out
+    while (spi_data[0] != 1):
+        await RisingEdge(dut.clk)
+        spi_data = get_spi_out
+
+    dut._log.info("SHA Test Done")
+
+@cocotb.test()
+async def aes_test(dut):
+    dut._log.info("Single AES Instruction")
+
+    # Set the clock period to 10 us (100 KHz)
+    clock = Clock(dut.clk, 10, units="us")
+    cocotb.start_soon(clock.start())
+
+    # Reset
+    dut._log.info("Resetting top inputs")
+    await reset_top(dut)
+
+    # Send test value in
+    valid = 1
+    encdec = 0
+    aes_sha = 0
+    key = 0
+    text = 1
+    dest = 2
+
+    testval_in = build_instr(valid, encdec, aes_sha, key, text, dest)
+    await send_spi_in(testval_in)
+    spi_data = get_spi_out
+    while (spi_data[0] != 1):
+        await RisingEdge(dut.clk)
+        spi_data = get_spi_out
+    
+    dut._log.info("AES Test Done")
         
 
 @cocotb.test()
@@ -164,32 +222,51 @@ async def ack_tests(dut):
 
     # Send test value in
     valid = 1
-    encdec = random.choice([0,1])
-    aes_sha = random.choice([0,1])
-    addresses = random.sample(range(1 << 24), 3)
-    key, text, dest = addresses
 
-    testval_in = build_instr(valid, encdec, aes_sha, key, text, dest)
-    await send_spi_in(testval_in)
-    await RisingEdge(dut.valid)
-    assert (dut.data_bus_out.value == LogicArray(f"{key}")) # first data_bus_out is key address
-    while (dut.ack_in[2] != 0):
-        await RisingEdge(dut.clk)
-    assert (dut.ack_in == 0b000) # ACK low and src = MEM
-    assert (dut.data_bus.out.value == LogicArray(f"{text}")) # second data_bus_out is text address
-    
+    for i in range(10):
 
+        encdec = random.choice([0,1])
+        aes_sha = random.choice([0,1])
+        addresses = random.sample(range(1 << 24), 3)
+        key, text, dest = addresses
+
+        testval_in = build_instr(valid, encdec, aes_sha, key, text, dest)
+        await send_spi_in(testval_in)
+        await RisingEdge(dut.valid)
+        assert (dut.data_bus_out.value == LogicArray(f"00100000{key}")) # first data_bus_out includes key address 
+
+        while (dut.ack_in[2] != 0):
+            await RisingEdge(dut.clk)
+        assert (dut.ack_in == 0b000) # ACK low and src = MEM
+        assert (dut.data_bus.out.value == LogicArray(f"00100001{text}")) # second data_bus_out includes text address
+
+        while (dut.ack_in[2] != 0):
+            await RisingEdge(dut.clk)
+        assert (dut.ack_in == 0b000) # ACK low and src = MEM
+        assert (dut.data_bus.out.value == LogicArray(f"{aes_sha}0100011000000000000000000000000")) # third data_bus_out includes hashop
+
+        while (dut.ack_in[2] != 0):
+            await RisingEdge(dut.clk)
+        assert (dut.ack_in == 0b001) # ACK low and src = SHA
+        assert (dut.data_bus.out.value == LogicArray(f"00001010{dest}"))
+
+        while (dut.ack_in[2] != 0):
+            await RisingEdge(dut.clk)
+        assert (dut.ack_in == 0b000) # ACK low and src = MEM
+
+    dut._log.info("ACK Tests Done")
 
     ''' TEST PLAN
     
-    - first dout is readkey addr
-    - on first ack from mem, dout is readtxt addr
-    - on second ack from mem, dout is hashop
-    - on third ack from sha, dout is write addr
-
+    - first dout includes readkey addr 
+    - on first ack from mem, dout includes readtxt addr
+    - on second ack from mem, dout includes hashop
+    - on third ack from sha, dout includes write addr
+    - fourth ack from mem
     
     '''
-  
+    
+    '''
 
 
     # Check expected behavior based on 'AES/SHA' bit
@@ -225,3 +302,4 @@ async def ack_tests(dut):
     completion_queue_test(dut, 0x000000)
     await reset_top(dut)
     completion_queue_test(dut, 0xFFFFFF)
+    '''
