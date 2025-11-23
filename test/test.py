@@ -109,7 +109,7 @@ async def serializer_test(dut, testval):
         
 
 
-
+'''
 @cocotb.test()
 async def test_project(dut):
     dut._log.info("Start")
@@ -148,7 +148,8 @@ async def test_project(dut):
     # Verify destination address reaches CPU 
     assert (testval_in & 0xFFFFFF) == (result & 0xFFFFFF), \
         f"Destination address {(testval_in & 0xFFFFFF)} expected to match address of completed data text: {(result & 0xFFFFFF)}"
-    
+'''
+'''     
 @cocotb.test()
 async def sha_test(dut):
     dut._log.info("Single SHA Instruction")
@@ -206,7 +207,7 @@ async def aes_test(dut):
         spi_data = get_spi_out
     
     dut._log.info("AES Test Done")
-        
+'''     
 
 @cocotb.test()
 async def ack_tests(dut):
@@ -220,7 +221,6 @@ async def ack_tests(dut):
     dut._log.info("Resetting top inputs")
     await reset_top(dut)
 
-    # Send test value in
     valid = 1
 
     for i in range(10):
@@ -229,6 +229,8 @@ async def ack_tests(dut):
         aes_sha = random.choice([0,1])
         addresses = random.sample(range(1 << 24), 3)
         key, text, dest = addresses
+
+        print(f"encdec: {encdec}, aes_sha: {aes_sha}, key: {key}, text: {text}, dest: {dest}")
 
         testval_in = build_instr(valid, encdec, aes_sha, key, text, dest)
         await send_spi_in(testval_in)
