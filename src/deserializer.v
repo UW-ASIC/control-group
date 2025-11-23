@@ -4,13 +4,14 @@ module deserializer #(
     parameter ADDRW   = 24,
     parameter OPCODEW = 2
 ) (
-    //INPUTS: clk, rst_n, spi_clk, mosi, cs_n, ready_in
+    //INPUTS: clk, rst_n, spi_clk, mosi, cs_n, aes_ready_in, sha_ready_in
     input  wire               clk,
     input  wire               rst_n,
     input  wire               spi_clk,
     input  wire               mosi,
     input  wire               cs_n,
-    input  wire               ready_in,
+    input  wire               aes_ready_in,
+    input  wire               sha_ready_in,
     //OUTPUTS: opcode[1:0], key_addr[ADDRW-1:0], text_addr[ADDRW-1:0], valid_out
     output reg                valid, 
     output reg  [OPCODEW-1:0] opcode,     
@@ -101,15 +102,30 @@ module deserializer #(
             end
 
             // decode shift-register output
-            if (busy && ready_in) begin
-                valid     <= shift_reg[SHIFT_W-1];
-                opcode    <= shift_reg[SHIFT_W-2 : 3*ADDRW];
-                key_addr  <= shift_reg[3*ADDRW-1 : 2*ADDRW]; 
-                text_addr <= shift_reg[2*ADDRW-1 : ADDRW];
-                dest_addr <= shift_reg[ADDRW-1 : 0];
-                valid_out <= 1'b1;   
-                busy      <= 1'b0;
+            if (shift_reg[3*ADDRW]) begin
+                // SHA
+                if (busy && sha_ready_in) begin
+                    valid     <= shift_reg[SHIFT_W-1];
+                    opcode    <= shift_reg[SHIFT_W-2 : 3*ADDRW];
+                    key_addr  <= shift_reg[3*ADDRW-1 : 2*ADDRW]; 
+                    text_addr <= shift_reg[2*ADDRW-1 : ADDRW];
+                    dest_addr <= shift_reg[ADDRW-1 : 0];
+                    valid_out <= 1'b1;   
+                    busy      <= 1'b0;
+                end
+            end else begin
+                // AES
+                if (busy && aes_ready_in) begin
+                    valid     <= shift_reg[SHIFT_W-1];
+                    opcode    <= shift_reg[SHIFT_W-2 : 3*ADDRW];
+                    key_addr  <= shift_reg[3*ADDRW-1 : 2*ADDRW]; 
+                    text_addr <= shift_reg[2*ADDRW-1 : ADDRW];
+                    dest_addr <= shift_reg[ADDRW-1 : 0];
+                    valid_out <= 1'b1;   
+                    busy      <= 1'b0;
+                end
             end
+            
         end
     end
 endmodule

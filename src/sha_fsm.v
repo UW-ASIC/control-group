@@ -38,7 +38,7 @@ module sha_fsm #(
     input  wire [2*ADDRW+1:0] req_data,
     output reg               ready_req_out,     // tells input req queue to release
 
-    input wire               comq_ready_in,
+    input wire               compq_ready_in,
     output reg [ADDRW-1:0]   compq_data_out,    // send output to xtal CPU to complete queue
     output reg               valid_compq_out,   // tells complete queue to accept current req 
 
@@ -115,7 +115,7 @@ module sha_fsm #(
             end
 
             COMPLETE: begin
-                if (comq_ready_in) next_state = READY;
+                if (compq_ready_in) next_state = READY;
             end
 
             default: next_state = READY;
@@ -184,4 +184,3 @@ module sha_fsm #(
     end
 
 endmodule
-
