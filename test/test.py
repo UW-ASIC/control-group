@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import cocotb
+import random
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, First
+from cocotb.types import LogicArray
 
 
 # NOTE This testbench was developed based on top level template
@@ -141,10 +143,32 @@ async def ack_tests(dut):
     await reset_top(dut)
 
     # Send test value in
-    testval_in = 0
+    valid = 1
+    encdec = random.choice([0,1])
+    aes_sha = random.choice([0,1])
+    addresses = random.sample(range(1 << 24), 3)
+    key, text, dest = addresses
+
+    testval_in = build_instr(valid, encdec, aes_sha, key, text, dest)
     await send_spi_in(testval_in)
     await RisingEdge(dut.valid)
+    assert (dut.data_bus_out.value == LogicArray(f"{key}")) # first data_bus_out is key address
+    while (dut.ack_in[2] != 0):
+        await RisingEdge(dut.clk)
+    assert (dut.ack_in == 0b000) # ACK low and src = MEM
+    assert (dut.data_bus.out.value == LogicArray(f"{text}")) # second data_bus_out is text address
+    
 
+
+    ''' TEST PLAN
+    
+    - first dout is readkey addr
+    - on first ack from mem, dout is readtxt addr
+    - on second ack from mem, dout is hashop
+    - on third ack from sha, dout is write addr
+
+    
+    '''
   
 
 
