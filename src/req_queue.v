@@ -57,6 +57,7 @@ module req_queue #(
     assign ready_out_aes = (aesReadIdx != aesWriteIdx || !aesFull) && rst_n;
     assign ready_out_sha = (shaReadIdx != shaWriteIdx || !shaFull) && rst_n;
     assign valid_out_aes = (aesReadIdx != aesWriteIdx || aesFull) && rst_n;
+    assign valid_out_sha = (shaReadIdx != shaWriteIdx || shaFull) && rst_n;
     assign instr_aes = aesQueue[aesReadIdx];
     assign instr_sha = shaQueue[shaReadIdx];
 

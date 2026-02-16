@@ -79,6 +79,6 @@ module tt_um_control_top #(
   wire compq_valid_out;
   wire compq_ready_in;
   comp_queue #(.ADDRW(ADDRW), .QDEPTH(COMP_QDEPTH)) comp_queue_inst (.clk(clk), .rst_n(rst_n), .valid_in_aes(compq_aes_valid), .valid_in_sha(compq_sha_valid), .dest_addr_aes(compq_aes_data), .dest_addr_sha(compq_sha_data), .ready_out_aes(compq_ready_aes), .ready_out_sha(compq_ready_sha), .data_out(compq_data), .valid_out(compq_valid_out), .ready_in(compq_ready_in));
-
-  serializer #(.ADDRW(ADDRW)) serializer_inst(.clk(clk), .rst_n(rst_n), .n_cs(cs_n), .spi_clk(spi_clk), .valid_in(compq_valid_out), .addr(compq_data), .miso(miso), .ready_out(compq_ready_in), .err());
+  wire serializer_err;
+  serializer #(.ADDRW(ADDRW)) serializer_inst(.clk(clk), .rst_n(rst_n), .n_cs(cs_n), .spi_clk(spi_clk), .valid_in(compq_valid_out), .addr(compq_data), .miso(miso), .ready_out(compq_ready_in), .err(serializer_err));
 endmodule
