@@ -4,7 +4,7 @@ module deserializer #(
     parameter ADDRW   = 24,
     parameter OPCODEW = 2
 ) (
-    //INPUTS: clk, rst_n, spi_clk, mosi, cs_n, aes_ready_in, sha_ready_in
+    // INPUTS: clk, rst_n, spi_clk, mosi, cs_n, aes_ready_in, sha_ready_in
     input  wire               clk,
     input  wire               rst_n,
     input  wire               spi_clk,
@@ -12,7 +12,7 @@ module deserializer #(
     input  wire               cs_n,
     input  wire               aes_ready_in,
     input  wire               sha_ready_in,
-    //OUTPUTS: opcode[1:0], key_addr[ADDRW-1:0], text_addr[ADDRW-1:0], valid_out
+    // OUTPUTS: opcode[1:0], key_addr[ADDRW-1:0], text_addr[ADDRW-1:0], valid_out
     output reg                valid, 
     output reg  [OPCODEW-1:0] opcode,     
     output reg  [ADDRW-1:0]   key_addr,
@@ -21,35 +21,17 @@ module deserializer #(
     output reg                valid_out
 );
 
-    function integer clog2;
-        input integer value;
-        integer v, n;  // <-- declare n
-        begin
-            if (value <= 1) begin
-                clog2 = 1;
-            end else begin
-                v = value - 1;
-                n = 0;
-                while (v > 0) begin
-                    v = v >> 1;
-                    n = n + 1;
-                end
-                clog2 = n;
-            end
-        end
-    endfunction
     localparam integer SHIFT_W = 1 + OPCODEW + (3 * ADDRW);
-    localparam integer CW = clog2(SHIFT_W + 1);
     localparam integer CNT_FULL = SHIFT_W - 1;
 
-    //Synchronize
+    // synchronize
     reg [1:0] r_clk;
     reg [1:0] r_cs_n;
     reg [1:0] r_mosi;    
 
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin       // Changed to active-low reset
-            r_clk <= 2'b00;     // Changed from 3'b00
+        if (!rst_n) begin // active-low reset
+            r_clk <= 2'b00;
             r_cs_n <= 2'b11;
             r_mosi <= 2'b00;
         end else begin
@@ -59,10 +41,8 @@ module deserializer #(
         end
     end
 
-    //Shift Data
+    // shift data
     wire clk_posedge = (r_clk == 2'b01);  // detected posedge of spi_clk (0->1)
-    wire cs_active  = ~r_cs_n[1];   // active-low CS
-    wire mosi_s = r_mosi[1];
 
     reg [31:0] cnt;  // how many bits of current word have been collected (widened to avoid width warnings)
     reg [SHIFT_W-1:0] shift_reg;

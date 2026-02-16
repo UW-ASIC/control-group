@@ -27,7 +27,6 @@ module comp_queue #(
 
     // Internal FIFO
     reg [ADDRW-1:0] mem [0:QDEPTH-1];
-    localparam integer IDXW = $clog2(QDEPTH);
     reg [31:0] head, tail; // widened to 32 bits to avoid width-expansion warnings
     wire [31:0] LAST_IDX = QDEPTH - 1;
     reg [$clog2(QDEPTH+1)-1:0] count;
@@ -57,7 +56,6 @@ module comp_queue #(
     end
 
     wire deq_valid = !empty;
-    wire deq_ready = ready_in && valid_out;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin

@@ -24,16 +24,6 @@ module req_queue #(
 
     integer i;
 
-    function integer clog2;
-        input integer value;
-        integer v, k;
-        begin
-            v = value - 1;
-            for (k = 0; v > 0; k = k + 1) v = v >> 1;
-            clog2 = (value <= 1) ? 1 : k;
-        end
-    endfunction
-
     initial begin
         $dumpfile("tb.vcd");
         for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, aesQueue[i]);
@@ -42,7 +32,6 @@ module req_queue #(
 
     localparam integer SHA_INSTRW = 2 * ADDRW + OPCODEW;
     localparam integer AES_INSTRW = 3 * ADDRW + OPCODEW;
-    localparam integer IDXW = clog2(QDEPTH);
     localparam integer LAST_IDX = QDEPTH - 1;
 
     reg [AES_INSTRW - 1:0] aesQueue [QDEPTH - 1:0];

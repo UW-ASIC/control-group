@@ -42,7 +42,7 @@ module tt_um_control_top #(
 
   assign uio_out = out_bus;
   assign uo_out = out_bus;
-  assign uio_oe = 8'b0;
+  assign uio_oe = 8'b0 & {8{&{1'b0, ena, in_bus[7], data_bus_out[7], data_bus_out[0], valid, serializer_err, curr_mode_top, counter_top}}};
   localparam AES_INSTRW = 3*ADDRW + OPCODEW;
   localparam SHA_INSTRW = 2*ADDRW + OPCODEW;
 

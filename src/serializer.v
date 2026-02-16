@@ -13,18 +13,7 @@ module serializer #(
     output reg  ready_out,
     output reg  err          //Error flag. Deserializer must reject collected data within txn 
 );
-    function integer clog2;
-        input integer value;
-        integer v, i;
-        begin
-            v = value - 1;
-            for (i = 0; v > 0; i = i + 1) v = v >> 1;
-            clog2 = (value <= 1) ? 1 : i;
-        end
-    endfunction
-
     localparam integer SHIFT_W  = ADDRW + 1; // include valid bit + addr
-    localparam integer CW       = clog2(SHIFT_W + 1);     // count width
 
     localparam integer CNT_INIT = SHIFT_W - 1;
 
