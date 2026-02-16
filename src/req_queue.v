@@ -33,7 +33,13 @@ module req_queue #(
     localparam integer SHA_INSTRW = 2 * ADDRW + OPCODEW;
     localparam integer AES_INSTRW = 3 * ADDRW + OPCODEW;
     localparam integer IDXW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH);
-    localparam integer LAST_IDX = QDEPTH - 1;
+    function [IDXW-1:0] idx_const;
+        input integer value;
+        begin
+            idx_const = value[IDXW-1:0];
+        end
+    endfunction
+    localparam [IDXW-1:0] LAST_IDX = idx_const(QDEPTH - 1);
 
     reg [AES_INSTRW - 1:0] aesQueue [QDEPTH - 1:0];
     reg [IDXW-1:0] aesReadIdx;

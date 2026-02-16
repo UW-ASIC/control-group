@@ -29,7 +29,13 @@ module comp_queue #(
     reg [ADDRW-1:0] mem [0:QDEPTH-1];
     localparam integer IDXW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH);
     localparam integer COUNTW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH + 1);
-    localparam integer LAST_IDX = QDEPTH - 1;
+    function [IDXW-1:0] idx_const;
+        input integer value;
+        begin
+            idx_const = value[IDXW-1:0];
+        end
+    endfunction
+    localparam [IDXW-1:0] LAST_IDX = idx_const(QDEPTH - 1);
     localparam [COUNTW-1:0] COUNT_MAX = QDEPTH;
     reg [IDXW-1:0] head, tail;
     reg [COUNTW-1:0] count;
