@@ -16,7 +16,7 @@ module serializer #(
     localparam integer SHIFT_W  = ADDRW + 1; // include valid bit + addr
 
     localparam integer CW = (SHIFT_W <= 1) ? 1 : $clog2(SHIFT_W + 1);
-    localparam [CW-1:0] CNT_INIT = SHIFT_W - 1;
+    localparam integer CNT_INIT = SHIFT_W - 1;
 
     reg [CW-1:0] cnt;                               //count reg
     reg [SHIFT_W-1:0] PISOreg;                      // [VALID][ADDRW]

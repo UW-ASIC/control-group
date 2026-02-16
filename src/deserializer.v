@@ -23,7 +23,7 @@ module deserializer #(
 
     localparam integer SHIFT_W = 1 + OPCODEW + (3 * ADDRW);
     localparam integer CW = (SHIFT_W <= 1) ? 1 : $clog2(SHIFT_W + 1);
-    localparam [CW-1:0] CNT_FULL = SHIFT_W - 1;
+    localparam integer CNT_FULL = SHIFT_W - 1;
 
     // synchronize
     reg [1:0] r_clk;
