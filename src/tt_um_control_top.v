@@ -5,7 +5,7 @@
 
 `default_nettype none
 
-module control_top #(
+module tt_um_control_top #(
   parameter ADDRW = 24,
   parameter OPCODEW = 2,
   parameter REQ_QDEPTH = 4,
