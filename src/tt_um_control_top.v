@@ -17,6 +17,7 @@ module tt_um_control_top #(
     input  wire       clk,      // clock
     input  wire       spi_clk,
     input  wire       rst_n,    // reset_n - low to reset
+<<<<<<< Updated upstream
     input  wire       cs_n,
     input  wire [2:0] ack_in,
     input  wire       bus_ready,
@@ -25,6 +26,38 @@ module tt_um_control_top #(
     output reg        data_bus_valid
 );
 
+=======
+    input  wire [7:0] ui_in,     // legacy dedicated inputs
+    output wire [7:0] uo_out,    // legacy dedicated outputs
+    input  wire [7:0] uio_in,    // user IOs: [0]=mosi, [1]=spi_clk, [2]=cs_n, [3]=bus_ready
+    output wire [7:0] uio_out,   // user IOs: outputs
+    output wire [7:0] uio_oe     // user IOs: output enable (1=output)
+);
+
+  // unify input buses (support both dedicated and IO-style ports)
+  wire [7:0] in_bus = ui_in | uio_in;
+  wire mosi = in_bus[0];
+  wire spi_clk = in_bus[1];
+  wire cs_n = in_bus[2];
+  wire bus_ready = in_bus[3];
+  wire [2:0] ack_in = in_bus[6:4];  // ACK signals
+
+  // Internal signals (will be mapped to uo_out)
+  wire miso;
+  wire [7:0] data_bus_out;
+  wire data_bus_valid;
+
+  // drive both legacy and IO outputs
+  wire [7:0] out_bus;
+  assign out_bus[0] = miso;
+  assign out_bus[6:1] = data_bus_out[6:1];
+  assign out_bus[7] = data_bus_valid;
+
+  assign uio_out = out_bus;
+  assign uo_out = out_bus;
+  assign uio_oe = 8'b0;
+
+>>>>>>> Stashed changes
   localparam AES_INSTRW = 3*ADDRW + OPCODEW;
   localparam SHA_INSTRW = 2*ADDRW + OPCODEW;
 
