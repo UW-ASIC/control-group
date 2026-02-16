@@ -27,12 +27,15 @@ module comp_queue #(
 
     // Internal FIFO
     reg [ADDRW-1:0] mem [0:QDEPTH-1];
-    reg [31:0] head, tail; // widened to 32 bits to avoid width-expansion warnings
-    wire [31:0] LAST_IDX = QDEPTH - 1;
-    reg [$clog2(QDEPTH+1)-1:0] count;
+    localparam integer IDXW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH);
+    localparam integer COUNTW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH + 1);
+    localparam [IDXW-1:0] LAST_IDX = QDEPTH - 1;
+    localparam [COUNTW-1:0] COUNT_MAX = QDEPTH;
+    reg [IDXW-1:0] head, tail;
+    reg [COUNTW-1:0] count;
 
-    wire full  = (count == QDEPTH);
-    wire empty = (count == 0);
+    wire full  = (count == COUNT_MAX);
+    wire empty = (count == {COUNTW{1'b0}});
 
     // Round-robin selector: 0 = AES, 1 = SHA
     reg rr_select;
@@ -59,9 +62,9 @@ module comp_queue #(
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            head <= 0;
-            tail <= 0;
-            count <= 0;
+            head <= {IDXW{1'b0}};
+            tail <= {IDXW{1'b0}};
+            count <= {COUNTW{1'b0}};
             rr_select <= 0;
             valid_out <= 0;
             data_out <= 0;
@@ -78,7 +81,7 @@ module comp_queue #(
             if (enq_valid && enq_ready) begin
                 mem[tail] <= enq_data;
                 // avoid modulo on mixed widths to prevent WIDTHTRUNC warnings
-                if (tail == LAST_IDX) tail <= 0;
+                if (tail == LAST_IDX) tail <= {IDXW{1'b0}};
                 else tail <= tail + 1;
                 count <= count + 1;
             end
@@ -90,7 +93,7 @@ module comp_queue #(
             // Dequeue logic
             if (deq_valid && ready_in) begin
                 data_out <= mem[head];
-                if (head == LAST_IDX) head <= 0;
+                if (head == LAST_IDX) head <= {IDXW{1'b0}};
                 else head <= head + 1;
                 count <= count - 1;
             end
