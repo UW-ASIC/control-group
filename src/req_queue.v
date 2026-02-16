@@ -22,18 +22,19 @@ module req_queue #(
     output wire ready_out_sha
 );
 
+    integer i;
+
     function integer clog2;
         input integer value;
-        integer v, i;
+        integer v, k;
         begin
             v = value - 1;
-            for (i = 0; v > 0; i = i + 1) v = v >> 1;
-            clog2 = (value <= 1) ? 1 : i;
+            for (k = 0; v > 0; k = k + 1) v = v >> 1;
+            clog2 = (value <= 1) ? 1 : k;
         end
     endfunction
 
     initial begin
-        integer i;
         $dumpfile("tb.vcd");
         for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, aesQueue[i]);
         for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, shaQueue[i]);
@@ -42,51 +43,57 @@ module req_queue #(
     localparam integer SHA_INSTRW = 2 * ADDRW + OPCODEW;
     localparam integer AES_INSTRW = 3 * ADDRW + OPCODEW;
     localparam integer IDXW = clog2(QDEPTH);
+    localparam integer LAST_IDX = QDEPTH - 1;
 
     reg [AES_INSTRW - 1:0] aesQueue [QDEPTH - 1:0];
-    reg [IDXW - 1:0] aesReadIdx;
-    reg [IDXW - 1:0] aesWriteIdx;
+    reg [31:0] aesReadIdx;
+    reg [31:0] aesWriteIdx;
     reg aesFull;
     reg [SHA_INSTRW - 1:0] shaQueue [QDEPTH - 1:0];
-    reg [IDXW - 1:0] shaReadIdx;
-    reg [IDXW - 1:0] shaWriteIdx;
+    reg [31:0] shaReadIdx;
+    reg [31:0] shaWriteIdx;
     reg shaFull;
 
     assign ready_out_aes = (aesReadIdx != aesWriteIdx || !aesFull) && rst_n;
     assign ready_out_sha = (shaReadIdx != shaWriteIdx || !shaFull) && rst_n;
     assign valid_out_aes = (aesReadIdx != aesWriteIdx || aesFull) && rst_n;
-    assign valid_out_sha = (shaReadIdx != shaWriteIdx || shaFull) && rst_n;
     assign instr_aes = aesQueue[aesReadIdx];
     assign instr_sha = shaQueue[shaReadIdx];
 
     always @(posedge clk or negedge rst_n) begin 
         if (!rst_n) begin
-            integer i;
             for (i = 0; i < QDEPTH; i = i + 1) aesQueue[i] <= {AES_INSTRW{1'b0}};
-            aesReadIdx <= {IDXW{1'b0}};
-            aesWriteIdx <= {IDXW{1'b0}};
+            aesReadIdx <= 32'd0;
+            aesWriteIdx <= 32'd0;
             aesFull <= 0;
             for (i = 0; i < QDEPTH; i = i + 1) shaQueue[i] <= {SHA_INSTRW{1'b0}};
-            shaReadIdx <= {IDXW{1'b0}};
-            shaWriteIdx <= {IDXW{1'b0}};
+            shaReadIdx <= 32'd0;
+            shaWriteIdx <= 32'd0;
             shaFull <= 0;
         end else begin
             if (valid_in) begin
                 if (ready_out_aes) begin
                     if (opcode[0] == 0) begin
-                        aesQueue[aesWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
-                        aesWriteIdx <= (aesWriteIdx + 1) % QDEPTH;
-                        if (aesReadIdx == (aesWriteIdx + 1) % QDEPTH) begin
-                            aesFull <= 1;
-                        end
+                            aesQueue[aesWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
+                            // compute next index without using % to avoid width warnings
+                            if (aesWriteIdx == LAST_IDX) begin
+                                if (aesReadIdx == 0) aesFull <= 1;
+                                aesWriteIdx <= 0;
+                            end else begin
+                                if (aesReadIdx == aesWriteIdx + 1) aesFull <= 1;
+                                aesWriteIdx <= aesWriteIdx + 1;
+                            end
                     end
                 end
                 if (ready_out_sha) begin
                     if (opcode[0] == 1) begin
                         shaQueue[shaWriteIdx] <= {opcode, text_addr, dest_addr};
-                        shaWriteIdx <= (shaWriteIdx + 1) % QDEPTH;
-                        if (shaReadIdx == (shaWriteIdx + 1) % QDEPTH) begin
-                            shaFull <= 1;
+                        if (shaWriteIdx == LAST_IDX) begin
+                            if (shaReadIdx == 0) shaFull <= 1;
+                            shaWriteIdx <= 0;
+                        end else begin
+                            if (shaReadIdx == shaWriteIdx + 1) shaFull <= 1;
+                            shaWriteIdx <= shaWriteIdx + 1;
                         end
                     end
                 end

@@ -38,8 +38,9 @@ module deserializer #(
             end
         end
     endfunction
-    localparam integer SHIFT_W = 1 + OPCODEW + (3 * ADDRW); 
-    localparam integer CW = clog2(SHIFT_W + 1);  
+    localparam integer SHIFT_W = 1 + OPCODEW + (3 * ADDRW);
+    localparam integer CW = clog2(SHIFT_W + 1);
+    localparam integer CNT_FULL = SHIFT_W - 1;
 
     //Synchronize
     reg [1:0] r_clk;
@@ -63,13 +64,13 @@ module deserializer #(
     wire cs_active  = ~r_cs_n[1];   // active-low CS
     wire mosi_s = r_mosi[1];
 
-    reg [CW-1:0] cnt;  // how many bits of current word have been collected
+    reg [31:0] cnt;  // how many bits of current word have been collected (widened to avoid width warnings)
     reg [SHIFT_W-1:0] shift_reg;
     reg busy;  // when pending_valid == 1, ignore new incoming bits
     
     always @ (posedge clk or negedge rst_n) begin
         if (!rst_n) begin   // Active-low reset
-            cnt        <= {CW{1'b0}};
+            cnt        <= 32'd0;
             shift_reg  <= {SHIFT_W{1'b0}};
             busy       <= 1'b0;
             valid      <= 1'b0;
@@ -86,9 +87,9 @@ module deserializer #(
                 if (clk_posedge && !busy) begin
                     // shift in data
                     shift_reg <= {shift_reg[SHIFT_W-2:0], r_mosi[1]};
-                    if (cnt == (SHIFT_W-1)) begin
+                    if (cnt == CNT_FULL) begin
                         busy <= 1'b1;                 // full word captured
-                        cnt  <= {CW{1'b0}};
+                        cnt  <= 32'd0;
                     end else begin
                         cnt <= cnt + 1'b1;            // increment count
                     end
@@ -96,7 +97,7 @@ module deserializer #(
             end else begin
                 // on de-assertion, clear partial word
                 if (!busy) begin
-                    cnt       <= {CW{1'b0}};
+                    cnt       <= 32'd0;
                     shift_reg <= {SHIFT_W{1'b0}};
                 end
             end

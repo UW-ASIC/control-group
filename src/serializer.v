@@ -23,11 +23,13 @@ module serializer #(
         end
     endfunction
 
-    localparam integer SHIFT_W  = ADDRW;
-    localparam integer CW       = clog2(SHIFT_W + 1);     //addrw + valid width 
+    localparam integer SHIFT_W  = ADDRW + 1; // include valid bit + addr
+    localparam integer CW       = clog2(SHIFT_W + 1);     // count width
 
-    reg [CW-1:0] cnt;                               //count reg
-    reg [SHIFT_W-1:0] PISOreg;                      //ASSUMES 25 -> [VALID][ADDRW] -> 0, left shift 
+    localparam integer CNT_INIT = SHIFT_W - 1;
+
+    reg [31:0] cnt;                               //count reg (widened to avoid width warnings)
+    reg [SHIFT_W-1:0] PISOreg;                      // [VALID][ADDRW]
     reg [1:0] clkstat;                              //clock for spi
     wire negedgeSPI = (clkstat == 2'b10);           //detect edge
     
@@ -83,7 +85,7 @@ module serializer #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin 
             ready_out   <= 1;
-            cnt         <= (SHIFT_W-1);
+            cnt         <= CNT_INIT;
             PISOreg     <= 0;
             miso        <= 1'b0;
             err         <= 1'b0;
@@ -92,11 +94,11 @@ module serializer #(
             if (valid_in && ready_out == 1 && negedgeSPI) begin
                 PISOreg     <= {1'b1 , addr};
                 ready_out   <= 0;
-                cnt         <= (SHIFT_W-1);
+                cnt         <= CNT_INIT;
                 miso        <= 1'b1;
             end else if (negedgeSPI && !ready_out) begin
                 miso        <= PISOreg[SHIFT_W-1];
-                PISOreg     <= {PISOreg[SHIFT_W-1:0], 1'b0};
+                PISOreg     <= {PISOreg[SHIFT_W-2:0], 1'b0};
 
                 if (cnt != 1) begin
                     cnt <= cnt - 1;
@@ -110,7 +112,7 @@ module serializer #(
         end else if (valid_ncs && !ready_out) begin //ncs goes high while ready_out still ongoing, clear error state and raise flag
             err         <= 1'b1;
             ready_out   <= 1;
-            cnt         <= (SHIFT_W-1);
+            cnt         <= CNT_INIT;
             PISOreg     <= 0;
             miso        <= 1'b0;
         end else begin

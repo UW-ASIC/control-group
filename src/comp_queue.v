@@ -25,7 +25,9 @@ module comp_queue #(
 
     // Internal FIFO
     reg [ADDRW-1:0] mem [0:QDEPTH-1];
-    reg [$clog2(QDEPTH)-1:0] head, tail;
+    localparam integer IDXW = $clog2(QDEPTH);
+    reg [31:0] head, tail; // widened to 32 bits to avoid width-expansion warnings
+    wire [31:0] LAST_IDX = QDEPTH - 1;
     reg [$clog2(QDEPTH+1)-1:0] count;
 
     wire full  = (count == QDEPTH);
@@ -73,7 +75,9 @@ module comp_queue #(
             // Enqueue logic
             if (enq_valid && enq_ready) begin
                 mem[tail] <= enq_data;
-                tail <= (tail + 1) % QDEPTH;
+                // avoid modulo on mixed widths to prevent WIDTHTRUNC warnings
+                if (tail == LAST_IDX) tail <= 0;
+                else tail <= tail + 1;
                 count <= count + 1;
             end
 
@@ -84,7 +88,8 @@ module comp_queue #(
             // Dequeue logic
             if (deq_valid && ready_in) begin
                 data_out <= mem[head];
-                head <= (head + 1) % QDEPTH;
+                if (head == LAST_IDX) head <= 0;
+                else head <= head + 1;
                 count <= count - 1;
             end
 
