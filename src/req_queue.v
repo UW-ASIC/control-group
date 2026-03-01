@@ -22,9 +22,18 @@ module req_queue #(
     output wire ready_out_sha
 );
 
-    integer i;
+    function integer clog2;
+        input integer value;
+        integer v, i;
+        begin
+            v = value - 1;
+            for (i = 0; v > 0; i = i + 1) v = v >> 1;
+            clog2 = (value <= 1) ? 1 : i;
+        end
+    endfunction
 
     initial begin
+        integer i;
         $dumpfile("tb.vcd");
         for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, aesQueue[i]);
         for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, shaQueue[i]);
@@ -32,22 +41,24 @@ module req_queue #(
 
     localparam integer SHA_INSTRW = 2 * ADDRW + OPCODEW;
     localparam integer AES_INSTRW = 3 * ADDRW + OPCODEW;
+    // Calculate index and count widths based on QDEPTH 
+    // Handles edge cases like QDEPTH <= 1, force min width to be 1
     localparam integer IDXW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH);
-    function [IDXW-1:0] idx_const;
+    function [IDXW - 1:0] idx_const;
         input integer value;
         begin
-            idx_const = value[IDXW-1:0];
+            idx_const = value[IDXW - 1:0];
         end
     endfunction
-    localparam [IDXW-1:0] LAST_IDX = idx_const(QDEPTH - 1);
+    localparam [IDXW - 1:0] LAST_IDX = idx_const(QDEPTH - 1);
 
     reg [AES_INSTRW - 1:0] aesQueue [QDEPTH - 1:0];
-    reg [IDXW-1:0] aesReadIdx;
-    reg [IDXW-1:0] aesWriteIdx;
+    reg [IDXW - 1:0] aesReadIdx;
+    reg [IDXW - 1:0] aesWriteIdx;
     reg aesFull;
     reg [SHA_INSTRW - 1:0] shaQueue [QDEPTH - 1:0];
-    reg [IDXW-1:0] shaReadIdx;
-    reg [IDXW-1:0] shaWriteIdx;
+    reg [IDXW - 1:0] shaReadIdx;
+    reg [IDXW - 1:0] shaWriteIdx;
     reg shaFull;
 
     assign ready_out_aes = (aesReadIdx != aesWriteIdx || !aesFull) && rst_n;
@@ -59,6 +70,7 @@ module req_queue #(
 
     always @(posedge clk or negedge rst_n) begin 
         if (!rst_n) begin
+            integer i;
             for (i = 0; i < QDEPTH; i = i + 1) aesQueue[i] <= {AES_INSTRW{1'b0}};
             aesReadIdx <= {IDXW{1'b0}};
             aesWriteIdx <= {IDXW{1'b0}};
@@ -71,15 +83,15 @@ module req_queue #(
             if (valid_in) begin
                 if (ready_out_aes) begin
                     if (opcode[0] == 0) begin
-                            aesQueue[aesWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
-                            // compute next index without using % to avoid width warnings
-                            if (aesWriteIdx == LAST_IDX) begin
-                                if (aesReadIdx == {IDXW{1'b0}}) aesFull <= 1;
-                                aesWriteIdx <= {IDXW{1'b0}};
-                            end else begin
-                                if (aesReadIdx == aesWriteIdx + 1) aesFull <= 1;
-                                aesWriteIdx <= aesWriteIdx + 1;
-                            end
+                        aesQueue[aesWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
+                        // compute next index without using % to avoid width warnings
+                        if (aesWriteIdx == LAST_IDX) begin
+                            if (aesReadIdx == {IDXW{1'b0}}) aesFull <= 1;
+                            aesWriteIdx <= {IDXW{1'b0}};
+                        end else begin
+                            if (aesReadIdx == aesWriteIdx + 1) aesFull <= 1;
+                            aesWriteIdx <= aesWriteIdx + 1;
+                        end
                     end
                 end
                 if (ready_out_sha) begin
@@ -96,13 +108,17 @@ module req_queue #(
                 end
             end
             if (ready_in_aes) begin
-                if (aesReadIdx == LAST_IDX) aesReadIdx <= {IDXW{1'b0}};
-                else aesReadIdx <= aesReadIdx + 1;
+                if (aesReadIdx == LAST_IDX) 
+                    aesReadIdx <= {IDXW{1'b0}};
+                else 
+                    aesReadIdx <= aesReadIdx + 1;
                 aesFull <= 0;
             end
             if (ready_in_sha) begin
-                if (shaReadIdx == LAST_IDX) shaReadIdx <= {IDXW{1'b0}};
-                else shaReadIdx <= shaReadIdx + 1;
+                if (shaReadIdx == LAST_IDX) 
+                    shaReadIdx <= {IDXW{1'b0}};
+                else 
+                    shaReadIdx <= shaReadIdx + 1;
                 shaFull <= 0;
             end
         end

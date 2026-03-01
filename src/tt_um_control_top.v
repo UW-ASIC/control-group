@@ -21,7 +21,13 @@ module tt_um_control_top #(
     output wire [7:0] uio_oe     // output enable (1=output)
 );
 
-  // input
+  // Tiny Tapeout wraps discrete pins into 8-bit buses.
+  // Legacy control_top equivalents:
+  // in_bus[0]   -> mosi
+  // in_bus[1]   -> spi_clk
+  // in_bus[2]   -> cs_n
+  // in_bus[3]   -> bus_ready
+  // in_bus[6:4] -> ack_in[2:0]
   wire [7:0] in_bus = ui_in | uio_in;
   wire mosi = in_bus[0];
   wire spi_clk = in_bus[1];
@@ -29,12 +35,19 @@ module tt_um_control_top #(
   wire bus_ready = in_bus[3];
   wire [2:0] ack_in = in_bus[6:4];  // ACK signals
 
-  // internal signals (will be mapped to uo_out)
+  // Internal signals corresponding to old top-level outputs/signals:
+  // miso         <-> old output miso
+  // data_bus_out <-> old output data_bus_out[7:0]
+  // data_bus_valid <-> old output data_bus_valid
   wire miso;
   wire [7:0] data_bus_out;
   wire data_bus_valid;
 
-  // outputs
+  // Packed TT outputs carrying old outputs:
+  // out_bus[0]   = miso
+  // out_bus[6:1] = data_bus_out[6:1]
+  // out_bus[7]   = data_bus_valid
+  // Note: data_bus_out[0] and [7] are not exported on out_bus.
   wire [7:0] out_bus;
   assign out_bus[0] = miso;
   assign out_bus[6:1] = data_bus_out[6:1];

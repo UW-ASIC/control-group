@@ -21,15 +21,30 @@ module deserializer #(
     output reg                valid_out
 );
 
-    localparam integer SHIFT_W = 1 + OPCODEW + (3 * ADDRW);
-    localparam integer CW = (SHIFT_W <= 1) ? 1 : $clog2(SHIFT_W + 1);
-    function [CW-1:0] cw_const;
+    // clog2 helper function for calculating bit widths
+    function integer clog2;
         input integer value;
+        integer v, n;       // delacre n
         begin
-            cw_const = value[CW-1:0];
+            if (value <= 1) begin
+                clog2 = 1;
+            end else begin
+                v = value - 1;
+                n = 0;
+                while (v > 0) begin
+                    v = v >> 1;
+                    n = n + 1;
+                end
+                clog2 = n;
+            end
         end
     endfunction
-    localparam [CW-1:0] CNT_FULL = cw_const(SHIFT_W - 1);
+
+    // Total instruction width: [valid(1b), opcode(OPCODEW), key_addr, text_addr, dest_addr]
+    localparam integer SHIFT_W = 1 + OPCODEW + (3 * ADDRW);
+    // Bits needed to count from 0 to SHIFT_W-1
+    localparam integer CW = clog2(SHIFT_W + 1);
+    localparam [CW-1:0] CNT_FULL = SHIFT_W - 1;
 
     // synchronize
     reg [1:0] r_clk;
@@ -37,9 +52,9 @@ module deserializer #(
     reg [1:0] r_mosi;    
 
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin // active-low reset
-            r_clk <= 2'b00;
-            r_cs_n <= 2'b11;
+        if (!rst_n) begin       // Changed to active-low reset
+            r_clk <= 2'b00;     // Changed from 3'b00
+            r_cs_n <= 2'b11;    // Inactive
             r_mosi <= 2'b00;
         end else begin
             r_clk <= {r_clk[0], spi_clk};
@@ -51,20 +66,20 @@ module deserializer #(
     // shift data
     wire clk_posedge = (r_clk == 2'b01);  // detected posedge of spi_clk (0->1)
 
-    reg [CW-1:0] cnt;  // how many bits of current word have been collected
+    reg [CNT_W-1:0] cnt;  // how many bits of current word have been collected
     reg [SHIFT_W-1:0] shift_reg;
     reg busy;  // when pending_valid == 1, ignore new incoming bits
     
     always @ (posedge clk or negedge rst_n) begin
         if (!rst_n) begin   // Active-low reset
-            cnt        <= {CW{1'b0}};
+            cnt        <= {CNT_W{1'b0}};
             shift_reg  <= {SHIFT_W{1'b0}};
             busy       <= 1'b0;
             valid      <= 1'b0;
             opcode     <= {OPCODEW{1'b0}};
             key_addr   <= {ADDRW{1'b0}};
             text_addr  <= {ADDRW{1'b0}};
-            dest_addr  <= {ADDRW{1'B0}}; 
+            dest_addr  <= {ADDRW{1'b0}}; 
             valid_out  <= 1'b0;
         end else begin
             valid_out <= 1'b0;  // one-cycle pulse default
@@ -76,7 +91,7 @@ module deserializer #(
                     shift_reg <= {shift_reg[SHIFT_W-2:0], r_mosi[1]};
                     if (cnt == CNT_FULL) begin
                         busy <= 1'b1;                 // full word captured
-                        cnt  <= {CW{1'b0}};
+                        cnt  <= {CNT_W{1'b0}};
                     end else begin
                         cnt <= cnt + 1'b1;            // increment count
                     end
@@ -84,7 +99,7 @@ module deserializer #(
             end else begin
                 // on de-assertion, clear partial word
                 if (!busy) begin
-                    cnt       <= {CW{1'b0}};
+                    cnt       <= {CNT_W{1'b0}};
                     shift_reg <= {SHIFT_W{1'b0}};
                 end
             end

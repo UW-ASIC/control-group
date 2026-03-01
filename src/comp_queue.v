@@ -27,6 +27,8 @@ module comp_queue #(
 
     // Internal FIFO
     reg [ADDRW-1:0] mem [0:QDEPTH-1];
+    // Calculate index and count widths based on QDEPTH 
+    // Handles edge cases like QDEPTH <= 1, force min width to be 1
     localparam integer IDXW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH);
     localparam integer COUNTW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH + 1);
     function [IDXW-1:0] idx_const;
@@ -37,11 +39,12 @@ module comp_queue #(
     endfunction
     localparam [IDXW-1:0] LAST_IDX = idx_const(QDEPTH - 1);
     localparam [COUNTW-1:0] COUNT_MAX = QDEPTH;
+    
     reg [IDXW-1:0] head, tail;
     reg [COUNTW-1:0] count;
 
     wire full  = (count == COUNT_MAX);
-    wire empty = (count == {COUNTW{1'b0}});
+    wire empty = (count == {COUNTW{1'b0}}); // zero width
 
     // Round-robin selector: 0 = AES, 1 = SHA
     reg rr_select;
@@ -99,8 +102,10 @@ module comp_queue #(
             // Dequeue logic
             if (deq_valid && ready_in) begin
                 data_out <= mem[head];
-                if (head == LAST_IDX) head <= {IDXW{1'b0}};
-                else head <= head + 1;
+                if (head == LAST_IDX)       // (head + 1) % QDEPTH
+                    head <= {IDXW{1'b0}};
+                else 
+                    head <= head + 1;
                 count <= count - 1;
             end
 
