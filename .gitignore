@@ -33,3 +33,5 @@ queue_test/tb.gtkw
 # testbench output related only
 sim.out
 output.log
+docs/LOCAL_RUN.md
+scripts/run_tt_docker.sh

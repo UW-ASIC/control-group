@@ -18,18 +18,33 @@ module comp_queue #(
 );
 
     // VCD dump for simulation
+`ifndef SYNTHESIS
     initial begin
         $dumpfile("tb.vcd");
         $dumpvars(0, comp_queue);
     end
+`endif
 
     // Internal FIFO
     reg [ADDRW-1:0] mem [0:QDEPTH-1];
-    reg [$clog2(QDEPTH)-1:0] head, tail;
-    reg [$clog2(QDEPTH+1)-1:0] count;
+    // Calculate index and count widths based on QDEPTH 
+    // Handles edge cases like QDEPTH <= 1, force min width to be 1
+    localparam integer IDXW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH);
+    localparam integer COUNTW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH + 1);
+    function [IDXW-1:0] idx_const;
+        input integer value;
+        begin
+            idx_const = value[IDXW-1:0];
+        end
+    endfunction
+    localparam [IDXW-1:0] LAST_IDX = idx_const(QDEPTH - 1);
+    localparam [COUNTW-1:0] COUNT_MAX = QDEPTH;
+    
+    reg [IDXW-1:0] head, tail;
+    reg [COUNTW-1:0] count;
 
-    wire full  = (count == QDEPTH);
-    wire empty = (count == 0);
+    wire full  = (count == COUNT_MAX);
+    wire empty = (count == {COUNTW{1'b0}}); // zero width
 
     // Round-robin selector: 0 = AES, 1 = SHA
     reg rr_select;
@@ -53,27 +68,30 @@ module comp_queue #(
     end
 
     wire deq_valid = !empty;
-    wire deq_ready = ready_in && valid_out;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            head <= 0;
-            tail <= 0;
-            count <= 0;
+            head <= {IDXW{1'b0}};
+            tail <= {IDXW{1'b0}};
+            count <= {COUNTW{1'b0}};
             rr_select <= 0;
             valid_out <= 0;
             data_out <= 0;
         end else begin
-            // Debug output around failing cycle
+            // Debug output around failing cycle (simulation only)
+`ifndef SYNTHESIS
             if ($time >= 2250000 && $time <= 2290000) begin
                 $display("[%0t] rr_select=%0b | valid_in_aes=%b valid_in_sha=%b | aes_sel=%b sha_sel=%b | enq_valid=%b enq_ready=%b | count=%0d | tail=%0d",
                     $time, rr_select, valid_in_aes, valid_in_sha, aes_sel, sha_sel, enq_valid, enq_ready, count, tail);
             end
+`endif
 
             // Enqueue logic
             if (enq_valid && enq_ready) begin
                 mem[tail] <= enq_data;
-                tail <= (tail + 1) % QDEPTH;
+                // avoid modulo on mixed widths to prevent WIDTHTRUNC warnings
+                if (tail == LAST_IDX) tail <= {IDXW{1'b0}};
+                else tail <= tail + 1;
                 count <= count + 1;
             end
 
@@ -84,7 +102,10 @@ module comp_queue #(
             // Dequeue logic
             if (deq_valid && ready_in) begin
                 data_out <= mem[head];
-                head <= (head + 1) % QDEPTH;
+                if (head == LAST_IDX)       // (head + 1) % QDEPTH
+                    head <= {IDXW{1'b0}};
+                else 
+                    head <= head + 1;
                 count <= count - 1;
             end
 

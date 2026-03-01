@@ -162,10 +162,10 @@ module aes_fsm #(
             end
             HASHOP: begin
                 arb_req = 1'b1;
-                data_out = {24'b0, r_req_data[73], 1'b0, ACCEL_ID, 4'b0011};
+                data_out = {24'b0, r_req_data[3*ADDRW+1], 1'b0, ACCEL_ID, 4'b0011};
             end
             WAIT_HASHOP: begin
-                data_out = {24'b0, r_req_data[73], 1'b0, ACCEL_ID, 4'b0011};
+                data_out = {24'b0, r_req_data[3*ADDRW+1], 1'b0, ACCEL_ID, 4'b0011};
             end
             MEMWR: begin
                 arb_req = 1'b1;
