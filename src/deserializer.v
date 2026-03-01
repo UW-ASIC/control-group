@@ -66,13 +66,13 @@ module deserializer #(
     // shift data
     wire clk_posedge = (r_clk == 2'b01);  // detected posedge of spi_clk (0->1)
 
-    reg [CNT_W-1:0] cnt;  // how many bits of current word have been collected
+    reg [CW-1:0] cnt;  // how many bits of current word have been collected
     reg [SHIFT_W-1:0] shift_reg;
     reg busy;  // when pending_valid == 1, ignore new incoming bits
     
     always @ (posedge clk or negedge rst_n) begin
         if (!rst_n) begin   // Active-low reset
-            cnt        <= {CNT_W{1'b0}};
+            cnt        <= {CW{1'b0}};
             shift_reg  <= {SHIFT_W{1'b0}};
             busy       <= 1'b0;
             valid      <= 1'b0;
@@ -91,7 +91,7 @@ module deserializer #(
                     shift_reg <= {shift_reg[SHIFT_W-2:0], r_mosi[1]};
                     if (cnt == CNT_FULL) begin
                         busy <= 1'b1;                 // full word captured
-                        cnt  <= {CNT_W{1'b0}};
+                        cnt  <= {CW{1'b0}};
                     end else begin
                         cnt <= cnt + 1'b1;            // increment count
                     end
@@ -99,7 +99,7 @@ module deserializer #(
             end else begin
                 // on de-assertion, clear partial word
                 if (!busy) begin
-                    cnt       <= {CNT_W{1'b0}};
+                    cnt       <= {CW{1'b0}};
                     shift_reg <= {SHIFT_W{1'b0}};
                 end
             end
