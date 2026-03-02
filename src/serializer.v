@@ -13,21 +13,19 @@ module serializer #(
     output reg  ready_out,
     output reg  err          //Error flag. Deserializer must reject collected data within txn 
 );
-    function integer clog2;
+    localparam integer SHIFT_W  = ADDRW + 1; // include valid bit + addr
+
+    localparam integer CW = (SHIFT_W <= 1) ? 1 : $clog2(SHIFT_W + 1);
+    function [CW-1:0] cw_const;
         input integer value;
-        integer v, i;
         begin
-            v = value - 1;
-            for (i = 0; v > 0; i = i + 1) v = v >> 1;
-            clog2 = (value <= 1) ? 1 : i;
+            cw_const = value[CW-1:0];
         end
     endfunction
-
-    localparam integer SHIFT_W  = ADDRW;
-    localparam integer CW       = clog2(SHIFT_W + 1);     //addrw + valid width 
+    localparam [CW-1:0] CNT_INIT = cw_const(SHIFT_W - 1);
 
     reg [CW-1:0] cnt;                               //count reg
-    reg [SHIFT_W-1:0] PISOreg;                      //ASSUMES 25 -> [VALID][ADDRW] -> 0, left shift 
+    reg [SHIFT_W-1:0] PISOreg;                      // [VALID][ADDRW]
     reg [1:0] clkstat;                              //clock for spi
     wire negedgeSPI = (clkstat == 2'b10);           //detect edge
     
@@ -83,7 +81,7 @@ module serializer #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin 
             ready_out   <= 1;
-            cnt         <= (SHIFT_W-1);
+            cnt         <= CNT_INIT;
             PISOreg     <= 0;
             miso        <= 1'b0;
             err         <= 1'b0;
@@ -92,11 +90,11 @@ module serializer #(
             if (valid_in && ready_out == 1 && negedgeSPI) begin
                 PISOreg     <= {1'b1 , addr};
                 ready_out   <= 0;
-                cnt         <= (SHIFT_W-1);
+                cnt         <= CNT_INIT;
                 miso        <= 1'b1;
             end else if (negedgeSPI && !ready_out) begin
                 miso        <= PISOreg[SHIFT_W-1];
-                PISOreg     <= {PISOreg[SHIFT_W-1:0], 1'b0};
+                PISOreg     <= {PISOreg[SHIFT_W-2:0], 1'b0};
 
                 if (cnt != 1) begin
                     cnt <= cnt - 1;
@@ -110,7 +108,7 @@ module serializer #(
         end else if (valid_ncs && !ready_out) begin //ncs goes high while ready_out still ongoing, clear error state and raise flag
             err         <= 1'b1;
             ready_out   <= 1;
-            cnt         <= (SHIFT_W-1);
+            cnt         <= CNT_INIT;
             PISOreg     <= 0;
             miso        <= 1'b0;
         end else begin

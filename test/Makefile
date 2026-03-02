@@ -5,7 +5,15 @@
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = project.v
+PROJECT_SOURCES = aes_fsm.v \
+				  bus_arbiter.v \
+				  comp_queue.v \
+				  deserializer.v \
+				  req_queue.v \
+				  scoreboard.v \
+				  serializer.v \
+				  sha_fsm.v \
+				  tt_um_control_top.v
 
 ifneq ($(GATES),yes)
 

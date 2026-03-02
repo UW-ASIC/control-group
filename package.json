@@ -1,0 +1,10 @@
+{
+  "name": "control-group",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "lint:verilator": "verilator --lint-only --top-module tt_um_control_top src/*.v",
+    "lint:yosys": "yosys -p \"read_verilog src/*.v; hierarchy -check; proc; stat\"",
+    "lint": "npm run lint:verilator && npm run lint:yosys"
+  }
+}
