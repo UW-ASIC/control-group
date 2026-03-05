@@ -28,20 +28,20 @@ jobs:
           cd test
           make clean
           make
-          # make will return success even if the test fails, so check for failure in the results.xml
-          ! grep failure results.xml
+          # make will return success even if a test fails, so check all result files for failures
+          ! grep failure results_*.xml
 
       - name: Test Summary
         uses: test-summary/action@v2.3
         with:
-          paths: "test/results.xml"
+          paths: "test/results_*.xml"
         if: always()
 
-      - name: upload vcd
+      - name: upload artifacts
         if: success() || failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-vcd
+          name: test-artifacts
           path: |
-            test/tb.vcd
-            test/results.xml
+            test/results_*.xml
+            test/*.vcd

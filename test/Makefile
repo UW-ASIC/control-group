@@ -34,7 +34,9 @@ endif
 # Allow sharing configuration between design and testbench via `include`:
 COMPILE_ARGS += -I$(SRC_DIR)
 
-.PHONY: test-aes-fsm test-sha-fsm test-bus-arbiter test-deserializer test-req-queue test-comp-queue test-serializer
+.PHONY: all test-aes-fsm test-sha-fsm test-bus-arbiter test-deserializer test-req-queue test-comp-queue test-serializer
+
+all: test-aes-fsm test-sha-fsm test-bus-arbiter test-deserializer test-req-queue test-comp-queue test-serializer
 
 test-aes-fsm:
 	$(MAKE) clean
@@ -102,9 +104,6 @@ test-serializer:
 .PHONY: clean
 clean::
 	rm -rf sim_build* results*.xml
-
-.PHONY: all
-all: test-aes-fsm test-sha-fsm test-bus-arbiter test-deserializer test-req-queue test-comp-queue test-serializer
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim
