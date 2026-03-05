@@ -16,7 +16,7 @@ module aes_fsm_tb #(
     wire ready_req_out;
 
     // Completion queue interface
-    reg comq_ready_in;
+    reg compq_ready_in;
     wire [ADDRW-1:0] compq_data_out;
     wire valid_compq_out;
 
@@ -40,7 +40,7 @@ module aes_fsm_tb #(
         .req_valid(req_valid),
         .req_data(req_data),
         .ready_req_out(ready_req_out),
-        .comq_ready_in(comq_ready_in),
+        .compq_ready_in(compq_ready_in),
         .compq_data_out(compq_data_out),
         .valid_compq_out(valid_compq_out),
         .arb_req(arb_req),
