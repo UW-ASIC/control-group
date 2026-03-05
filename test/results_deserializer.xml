@@ -1,8 +1,0 @@
-<testsuites name="results">
-  <testsuite name="all" package="all">
-    <property name="random_seed" value="1772670994" />
-    <testcase name="test_aes_decode" classname="test_deserializer" file="/Users/mariamelsahhar/Documents/code/uwasic/ctrl/control-group/test/test_deserializer.py" lineno="18" time="0.0010991096496582031" sim_time_ns="60.001" ratio_time="54590.54974056399" />
-    <testcase name="test_sha_routing" classname="test_deserializer" file="/Users/mariamelsahhar/Documents/code/uwasic/ctrl/control-group/test/test_deserializer.py" lineno="26" time="0.00036597251892089844" sim_time_ns="70.0" ratio_time="191271.19218241042" />
-    <testcase name="test_abort_mid_packet" classname="test_deserializer" file="/Users/mariamelsahhar/Documents/code/uwasic/ctrl/control-group/test/test_deserializer.py" lineno="34" time="0.0003609657287597656" sim_time_ns="70.0" ratio_time="193924.22721268164" />
-  </testsuite>
-</testsuites>

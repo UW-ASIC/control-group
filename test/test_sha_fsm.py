@@ -25,7 +25,7 @@ class SHAFSMDriver:
         self.dut.rst_n.value = 0
         self.dut.req_valid.value = 0
         self.dut.req_data.value = 0
-        self.dut.comq_ready_in.value = 1
+        self.dut.compq_ready_in.value = 1
         self.dut.arb_grant.value = 0
         self.dut.ack_in.value = 0
         await ClockCycles(self.dut.clk, 5)
@@ -77,7 +77,7 @@ class SHAFSMDriver:
         
     async def set_compq_ready(self, ready):
         """Set completion queue ready signal"""
-        self.dut.comq_ready_in.value = ready
+        self.dut.compq_ready_in.value = ready
         await RisingEdge(self.dut.clk)
 
 
@@ -317,7 +317,7 @@ async def test_completion_queue_backpressure(dut):
     
     # Apply backpressure BEFORE starting transaction
     dut._log.info("Applying completion queue backpressure from start")
-    dut.comq_ready_in.value = 0
+    dut.compq_ready_in.value = 0
     
     # Run through complete transaction quickly
     await driver.send_request(0x002000, 0x003000)
@@ -351,7 +351,7 @@ async def test_completion_queue_backpressure(dut):
     
     # Release backpressure
     dut._log.info("Releasing completion queue backpressure")
-    dut.comq_ready_in.value = 1
+    dut.compq_ready_in.value = 1
     await RisingEdge(dut.clk)
     
     # Should transition to READY
