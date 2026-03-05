@@ -1,0 +1,8 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1772673103" />
+    <testcase name="test_basic_requests" classname="test_bus_arbiter" file="/Users/mariamelsahhar/Documents/code/uwasic/ctrl/control-group/test/test_bus_arbiter.py" lineno="21" time="0.0021719932556152344" sim_time_ns="350.001" ratio_time="161142.7655657519" />
+    <testcase name="test_round_robin" classname="test_bus_arbiter" file="/Users/mariamelsahhar/Documents/code/uwasic/ctrl/control-group/test/test_bus_arbiter.py" lineno="60" time="0.0009920597076416016" sim_time_ns="230.0" ratio_time="231840.88440278778" />
+    <testcase name="test_data_transfer" classname="test_bus_arbiter" file="/Users/mariamelsahhar/Documents/code/uwasic/ctrl/control-group/test/test_bus_arbiter.py" lineno="102" time="0.0009582042694091797" sim_time_ns="220.0" ratio_time="229596.13834287136" />
+  </testsuite>
+</testsuites>

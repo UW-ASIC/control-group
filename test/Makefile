@@ -1,6 +1,9 @@
 # Makefile
 # See https://docs.cocotb.org/en/stable/quickstart.html for more info
 
+# Pin the default goal before cocotb's Makefile.sim can override it
+.DEFAULT_GOAL := all
+
 # defaults
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog

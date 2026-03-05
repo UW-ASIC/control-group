@@ -37,12 +37,12 @@ module control_top #(
   deserializer #(.ADDRW(ADDRW), .OPCODEW(OPCODEW)) deserializer_inst(.clk(clk), .rst_n(rst_n), .spi_clk(spi_clk), .mosi(mosi), .cs_n(cs_n), .aes_ready_in(aes_queue_ready), .sha_ready_in(sha_queue_ready), .valid(valid), .opcode(opcode), .key_addr(key_addr), .text_addr(text_addr), .dest_addr(dest_addr), .valid_out(req_q_valid));
 
   wire aes_fsm_ready, sha_fsm_ready;
-  wire [AES_INSTRW] instr_aes;
-  wire [SHA_INSTRW] instr_sha;
+  wire [AES_INSTRW-1:0] instr_aes;
+  wire [SHA_INSTRW-1:0] instr_sha;
   wire valid_out_aes, valid_out_sha;
   wire aes_queue_ready, sha_queue_ready;
   // May need to change deserializer so that it holds instruction until req_queue is ready for aes or sha
-  req_queue #(.ADDRW(ADDRW) .OPCODEW(OPCODEW), .QDEPTH(REQ_QDEPTH)) req_queue_inst(.clk(clk), .rst_n(rst_n), .valid_in(req_q_valid), .ready_in_aes(aes_fsm_ready), .ready_in_sha(sha_fsm_ready), .opcode(opcode), .key_addr(key_addr), .text_addr(text_addr), .dest_addr(dest_addr), .instr_aes(instr_aes), .valid_out_aes(valid_out_aes), .ready_out_aes(aes_queue_ready), .instr_sha(instr_sha), .valid_out_sha(valid_out_sha), .ready_out_sha(sha_queue_ready));
+  req_queue #(.ADDRW(ADDRW), .OPCODEW(OPCODEW), .QDEPTH(REQ_QDEPTH)) req_queue_inst(.clk(clk), .rst_n(rst_n), .valid_in(req_q_valid), .ready_in_aes(aes_fsm_ready), .ready_in_sha(sha_fsm_ready), .opcode(opcode), .key_addr(key_addr), .text_addr(text_addr), .dest_addr(dest_addr), .instr_aes(instr_aes), .valid_out_aes(valid_out_aes), .ready_out_aes(aes_queue_ready), .instr_sha(instr_sha), .valid_out_sha(valid_out_sha), .ready_out_sha(sha_queue_ready));
 
   wire compq_ready_aes, compq_ready_sha;
   wire [ADDRW-1:0] compq_aes_data, compq_sha_data;
@@ -51,7 +51,7 @@ module control_top #(
   sha_fsm #(.ADDRW(ADDRW)) sha_fsm_inst (.clk(clk), .rst_n(rst_n), .req_valid(valid_out_sha), .req_data(instr_sha), .ready_req_out(sha_fsm_ready), .compq_ready_in(compq_ready_sha), .compq_data_out(compq_sha_data), .valid_compq_out(compq_sha_valid), .arb_req(sha_arb_req), .arb_grant(sha_arb_grant), .ack_in(ack_in), .data_out(sha_fsm_data));
 
   wire aes_arb_req, sha_arb_req;
-  wire [7:0] aes_fsm_data, sha_fsm_data;
+  wire [ADDRW+7:0] aes_fsm_data, sha_fsm_data;
   wire aes_arb_grant, sha_arb_grant;
   bus_arbiter #(.ADDRW(ADDRW)) bus_arbiter_inst (.clk(clk), .rst_n(rst_n), .sha_req(sha_arb_req), .aes_req(aes_arb_req), .sha_data_in(sha_fsm_data), .aes_data_in(aes_fsm_data), .bus_ready(bus_ready), .data_out(data_bus_out), .valid_out(data_bus_valid), .aes_grant(aes_arb_grant), .sha_grant(sha_arb_grant));
 
