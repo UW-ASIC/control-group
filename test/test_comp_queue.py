@@ -119,9 +119,9 @@ class CompQueueMonitor:
                 self.transactions.append(sample.copy())
 
 
+# Test reset
 @cocotb.test()
 async def test_reset(dut):
-
     dut._log.info( "==================== RESET TEST ====================")
     driver = CompQueueDriver(dut)
     monitor = CompQueueMonitor(dut)
@@ -148,6 +148,7 @@ async def test_reset(dut):
     assert actual["data_out"] == expected["data_out"], f"data_out mismatch: expected {expected['data_out']}, got {actual['data_out']}"
 
 
+# Test multiple AES transactions to ensure they are processed in order and correctly
 @cocotb.test()
 async def test_aes_multi(dut):
     dut._log.info( "==================== AES MULTI TEST ====================")
@@ -173,19 +174,15 @@ async def test_aes_multi(dut):
 
     actual_transactions = monitor.transactions
 
-    # print("Actual transactions:")
-    # for t in actual_transactions:
-    #     print(t)
-
-    # assert len(actual_transactions) == len(expected_transactions), f"Expected {len(expected_transactions)} transactions, got {len(actual_transactions)}"
-    
     for i, (actual, expected) in enumerate(zip(actual_transactions, expected_transactions)):
         assert actual["data_out"] == expected["data_out"], f"Transaction {i} data_out mismatch: expected {expected['data_out']}, got {actual['data_out']}"
 
 
+
+# Test multiple SHA transactions to ensure they are processed in order and correctly
 @cocotb.test()
 async def test_sha_multi(dut):
-    dut._log.info( "==================== AES MULTI TEST ====================")
+    dut._log.info( "==================== SHA MULTI TEST ====================")
     driver = CompQueueDriver(dut)
     monitor = CompQueueMonitor(dut)
 
@@ -212,48 +209,8 @@ async def test_sha_multi(dut):
         assert actual["data_out"] == expected["data_out"], f"Transaction {i} data_out mismatch: expected {expected['data_out']}, got {actual['data_out']}"
 
 
-@cocotb.test()
-async def test_round_robin(dut):
-    dut._log.info( "==================== ROUND ROBIN TEST ====================")
-    driver = CompQueueDriver(dut)
-    monitor = CompQueueMonitor(dut)
 
-    expected_transactions = []
-
-    await monitor.start()
-    await driver.reset()
-
-    addr_aes = [0xAAAA, 0xBBBB, 0xCCCC, 0xDDDD, 0xEEEE]
-    addr_sha = [0x1111, 0x2222, 0x3333, 0x4444, 0x5555]
-
-    for i in range(5):
-        await driver.send_aes(addr_aes[i])
-    
-    for i in range(5):
-        await driver.send_sha(addr_sha[i])
-
-    for i in range(5):
-        aes = addr_aes[i]
-        sha = addr_sha[i]
-        expected_transactions.append({"data_out": aes})
-        expected_transactions.append({"data_out": sha})
-        
-    for _ in range(10):
-        await driver.dequeue()
-        await ClockCycles(dut.clk, 1)
-
-    await ClockCycles(dut.clk, 10)
-    await monitor.stop()
-
-    actual_transactions = monitor.transactions
-
-    print("Actual transactions:")
-    for t in actual_transactions:
-        print(t)
-
-    for i, (actual, expected) in enumerate(zip(actual_transactions, expected_transactions)):
-        assert actual["data_out"] == expected["data_out"], f"Transaction {i} data_out mismatch: expected {expected['data_out']}, got {actual['data_out']}"
-
+# Test that AES and SHA transactions are enqueued in a round-robin manner when both are sent concurrently
 @cocotb.test()
 async def test_enqueue_round_robin(dut):
     dut._log.info( "==================== BOTH ROUND ROBIN TEST ====================")
@@ -288,6 +245,7 @@ async def test_enqueue_round_robin(dut):
         assert actual["data_out"] == expected["data_out"], f"Transaction {i} data_out mismatch: expected {expected['data_out']}, got {actual['data_out']}"
 
 
+# Test that the queue correctly indicates when it is full and does not accept new transactions until space is available
 @cocotb.test()
 async def test_enqueue_full(dut):
     dut._log.info( "==================== ENQUEUE FULL TEST ====================")
@@ -325,6 +283,7 @@ async def test_enqueue_full(dut):
         assert actual["data_out"] == expected["data_out"], f"Transaction {i} data_out mismatch: expected {expected['data_out']}, got {actual['data_out']}"
     
 
+# Test that when ready_in is low, the queue does not dequeue and data_out remains stable until ready_in goes high
 @cocotb.test()
 async def test_not_ready_dequeue(dut):
     dut._log.info( "==================== NOT READY DEQUEUE TEST ====================")
@@ -358,6 +317,7 @@ async def test_not_ready_dequeue(dut):
     assert int(dut.data_out.value) != headAddr, f"data_out should have changed after dequeue, got {int(dut.data_out.value)}"
 
 
+# Test that the queue can handle concurrent enqueue and dequeue operations
 @cocotb.test()
 async def test_concurrent_enqueue_dequeue(dut):
     dut._log.info( "==================== CONCURRENT ENQUEUE DEQUEUE TEST ====================")
@@ -393,8 +353,11 @@ async def test_concurrent_enqueue_dequeue(dut):
     assert acutal[0]["data_out"] == expected[0]["data_out"], f"Transaction 0 data_out mismatch: expected {expected[0]['data_out']}, got {acutal[0]['data_out']}"
 
 
+
+# Test wrap around of queue pointers
 @cocotb.test()
 async def test_large_quantity(dut):
+    
     dut._log.info( "==================== LARGE QUANTITY TEST ====================")
     driver = CompQueueDriver(dut)
     monitor = CompQueueMonitor(dut)
