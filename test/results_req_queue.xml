@@ -1,0 +1,17 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1774479213" />
+    <testcase name="test_reset" classname="test_req_queue" file="/Users/deyoraperera/UWASIC/control-group/test/test_req_queue.py" lineno="134" time="0.003052234649658203" sim_time_ns="60.0" ratio_time="19657.728479925012" />
+    <testcase name="test_single_aes_request" classname="test_req_queue" file="/Users/deyoraperera/UWASIC/control-group/test/test_req_queue.py" lineno="152" time="0.0011930465698242188" sim_time_ns="109.999" ratio_time="92200.08906794564" />
+    <testcase name="test_single_sha_request" classname="test_req_queue" file="/Users/deyoraperera/UWASIC/control-group/test/test_req_queue.py" lineno="185" time="0.0010633468627929688" sim_time_ns="109.999" ratio_time="103446.01921434977" />
+    <testcase name="test_aes_fifo_order" classname="test_req_queue" file="/Users/deyoraperera/UWASIC/control-group/test/test_req_queue.py" lineno="218" time="0.0014929771423339844" sim_time_ns="169.99900000000002" ratio_time="113865.77542254872" />
+    <testcase name="test_sha_fifo_order" classname="test_req_queue" file="/Users/deyoraperera/UWASIC/control-group/test/test_req_queue.py" lineno="253" time="0.0014638900756835938" sim_time_ns="169.99900000000002" ratio_time="116128.25499934854" />
+    <testcase name="test_mixed_requests" classname="test_req_queue" file="/Users/deyoraperera/UWASIC/control-group/test/test_req_queue.py" lineno="288" time="0.0017161369323730469" sim_time_ns="199.99900000000002" ratio_time="116540.2341894971" />
+    <testcase name="test_aes_full" classname="test_req_queue" file="/Users/deyoraperera/UWASIC/control-group/test/test_req_queue.py" lineno="335" time="0.0018069744110107422" sim_time_ns="259.999" ratio_time="143886.37626283153" />
+    <testcase name="test_sha_full" classname="test_req_queue" file="/Users/deyoraperera/UWASIC/control-group/test/test_req_queue.py" lineno="357" time="0.002214193344116211" sim_time_ns="259.999" ratio_time="117423.80162549802" />
+    <testcase name="test_output_stable_when_not_popped" classname="test_req_queue" file="/Users/deyoraperera/UWASIC/control-group/test/test_req_queue.py" lineno="379" time="0.0010080337524414062" sim_time_ns="139.99900000000002" ratio_time="138883.24638032168" />
+    <testcase name="test_empty_pop_behavior" classname="test_req_queue" file="/Users/deyoraperera/UWASIC/control-group/test/test_req_queue.py" lineno="402" time="0.0014619827270507812" sim_time_ns="109.99900000000002" ratio_time="75239.60301630791">
+      <failure error_type="AssertionError" error_msg="AES queue should still appear empty" />
+    </testcase>
+  </testsuite>
+</testsuites>
