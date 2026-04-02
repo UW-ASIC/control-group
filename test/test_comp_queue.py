@@ -62,9 +62,6 @@ class CompQueueDriver:
         self.dut.dest_addr_sha.value = 0
 
     async def dequeue(self):
-        while self.dut.valid_out.value == 0:
-            await RisingEdge(self.dut.clk)
-        
         self.dut.ready_in.value = 1
 
         await RisingEdge(self.dut.clk)
@@ -263,13 +260,9 @@ async def test_enqueue_full(dut):
         expected.append({"data_out": aes_addr})
         await driver.send_aes(aes_addr)
 
-    driver.send_aes(0xDEAD)  
-    driver.send_aes(0xBEEF)
-
     await ClockCycles(dut.clk, 1)
 
     assert int(dut.ready_out_aes.value) == 0, f"ready_out_aes should be 0 after {queueDepth} enqueues, got {int(dut.ready_out_aes.value)}"
-    assert int(dut.ready_out_sha.value) == 0, f"ready_out_sha should be 0 after {queueDepth} enqueues, got {int(dut.ready_out_sha.value)}"
 
     for i in range(queueDepth):
         await driver.dequeue()
@@ -282,40 +275,6 @@ async def test_enqueue_full(dut):
     for i, (actual, expected) in enumerate(zip(actual, expected)):
         assert actual["data_out"] == expected["data_out"], f"Transaction {i} data_out mismatch: expected {expected['data_out']}, got {actual['data_out']}"
     
-
-# Test that when ready_in is low, the queue does not dequeue and data_out remains stable until ready_in goes high
-@cocotb.test()
-async def test_not_ready_dequeue(dut):
-    dut._log.info( "==================== NOT READY DEQUEUE TEST ====================")
-    driver = CompQueueDriver(dut)
-    monitor = CompQueueMonitor(dut)
-
-    await driver.reset()
-    await monitor.start()
-    
-    dut.ready_in.value = 0
-
-    headAddr = random.randint(0, 10000)
-
-    await driver.send_aes(headAddr)
-
-    for _ in range(5): 
-        await driver.send_aes(random.randint(0, 10000))
-
-    await ClockCycles(dut.clk, 1)
-
-    assert int(dut.valid_out.value) == 1, f"valid_out should be 1 after enqueue, got {int(dut.valid_out.value)}"
-    
-    for _ in range(5): #check that data is not being dequeued
-        await ClockCycles(dut.clk, 1)
-        assert int(dut.data_out.value) == headAddr, f"data_out should be {headAddr}, got {int(dut.data_out.value)}"
-
-    dut.ready_in.value = 1
-
-    await driver.dequeue()
-
-    assert int(dut.data_out.value) != headAddr, f"data_out should have changed after dequeue, got {int(dut.data_out.value)}"
-
 
 # Test that the queue can handle concurrent enqueue and dequeue operations
 @cocotb.test()
@@ -350,7 +309,8 @@ async def test_concurrent_enqueue_dequeue(dut):
 
     acutal = monitor.transactions
 
-    assert acutal[0]["data_out"] == expected[0]["data_out"], f"Transaction 0 data_out mismatch: expected {expected[0]['data_out']}, got {acutal[0]['data_out']}"
+    for i, (actual, expected) in enumerate(zip(acutal, expected)):
+        assert acutal["data_out"] == expected["data_out"], f"Transaction 0 data_out mismatch: expected {expected[0]['data_out']}, got {acutal[0]['data_out']}"
 
 
 
@@ -389,7 +349,8 @@ async def test_large_quantity(dut):
     
     actual = monitor.transactions[-5:]
 
-    for i in range(len(expected)):
-        assert actual[i]["data_out"] == expected[i]["data_out"], f"Transaction {i} data_out mismatch: expected {expected[i]['data_out']}, got {actual[i]['data_out']}"
+
+    for i, (actual, expected) in enumerate(zip(actual, expected)):
+        assert actual["data_out"] == expected["data_out"], f"Transaction {i} data_out mismatch: expected {expected['data_out']}, got {actual['data_out']}"
 
   

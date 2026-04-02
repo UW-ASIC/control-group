@@ -86,10 +86,10 @@ module comp_queue #(
                 data_out <= mem[head];
                 head <= (head + 1) % QDEPTH;
                 count <= count - 1;
+                valid_out <= 1;
+            end else begin
+                valid_out <= 0;
             end
-
-            // Update valid_out
-            valid_out <= !empty;
         end
     end
 
