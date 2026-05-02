@@ -75,8 +75,8 @@ module req_queue #(
                 if (ready_out_aes) begin
                     if (opcode[0] == 0) begin
                         aesQueue[aesWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
-                        aesWriteIdx <= (aesWriteIdx + 1) % QDEPTH;
-                        if (aesReadIdx == (aesWriteIdx + 1) % QDEPTH) begin
+                        aesWriteIdx <= (aesWriteIdx + 1);
+                        if (aesReadIdx == (aesWriteIdx + 1)) begin
                             aesFull <= 1;
                         end
                     end
@@ -84,8 +84,8 @@ module req_queue #(
                 if (ready_out_sha) begin
                     if (opcode[0] == 1) begin
                         shaQueue[shaWriteIdx] <= {opcode, text_addr, dest_addr};
-                        shaWriteIdx <= (shaWriteIdx + 1) % QDEPTH;
-                        if (shaReadIdx == (shaWriteIdx + 1) % QDEPTH) begin
+                        shaWriteIdx <= (shaWriteIdx + 1);
+                        if (shaReadIdx == (shaWriteIdx + 1)) begin
                             shaFull <= 1;
                         end
                     end

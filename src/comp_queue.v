@@ -73,7 +73,7 @@ module comp_queue #(
             // Enqueue logic
             if (enq_valid && enq_ready) begin
                 mem[tail] <= enq_data;
-                tail <= (tail + 1) % QDEPTH;
+                tail <= (tail + 1);
                 count <= count + 1;
             end
 
@@ -84,7 +84,7 @@ module comp_queue #(
             // Dequeue logic
             if (deq_valid && ready_in) begin
                 data_out <= mem[head];
-                head <= (head + 1) % QDEPTH;
+                head <= (head + 1);
                 count <= count - 1;
                 valid_out <= 1;
             end else begin

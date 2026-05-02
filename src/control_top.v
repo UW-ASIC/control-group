@@ -53,7 +53,10 @@ module control_top #(
   wire aes_arb_req, sha_arb_req;
   wire [ADDRW+7:0] aes_fsm_data, sha_fsm_data;
   wire aes_arb_grant, sha_arb_grant;
-  bus_arbiter #(.ADDRW(ADDRW)) bus_arbiter_inst (.clk(clk), .rst_n(rst_n), .sha_req(sha_arb_req), .aes_req(aes_arb_req), .sha_data_in(sha_fsm_data), .aes_data_in(aes_fsm_data), .bus_ready(bus_ready), .data_out(data_bus_out), .valid_out(data_bus_valid), .aes_grant(aes_arb_grant), .sha_grant(sha_arb_grant));
+  // unused
+  wire [1:0] curr_mode_top_unused;
+  wire [1:0] counter_top_unused;
+  bus_arbiter #(.ADDRW(ADDRW)) bus_arbiter_inst (.counter_top(counter_top_unused), .curr_mode_top(curr_mode_top_unused), .clk(clk), .rst_n(rst_n), .sha_req(sha_arb_req), .aes_req(aes_arb_req), .sha_data_in(sha_fsm_data), .aes_data_in(aes_fsm_data), .bus_ready(bus_ready), .data_out(data_bus_out), .valid_out(data_bus_valid), .aes_grant(aes_arb_grant), .sha_grant(sha_arb_grant));
 
   wire [ADDRW-1:0] compq_data;
   wire compq_valid_out;

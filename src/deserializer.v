@@ -40,6 +40,7 @@ module deserializer #(
     endfunction
     localparam integer SHIFT_W = 1 + OPCODEW + (3 * ADDRW); 
     localparam integer CW = clog2(SHIFT_W + 1);  
+    localparam [CW-1:0] SHIFT_LAST = SHIFT_W - 1;
 
     //Synchronize
     reg [1:0] r_clk;
