@@ -8,7 +8,7 @@ from cocotb.triggers import ClockCycles
 
 @cocotb.test()
 async def test_project(dut):
-    dut._log.info("Start")
+    dut._log.info("Start control_top smoke test")
 
     # Set the clock period to 10 us (100 KHz)
     clock = Clock(dut.clk, 10, units="us")
@@ -23,18 +23,28 @@ async def test_project(dut):
     await ClockCycles(dut.clk, 10)
     dut.rst_n.value = 1
 
-    dut._log.info("Test project behavior")
+    dut._log.info("Check top-level wiring invariants")
+    await ClockCycles(dut.clk, 5)
 
-    # Set the input values you want to test
-    dut.ui_in.value = 20
-    dut.uio_in.value = 30
+    # uio_oe is tied low in this design
+    assert int(dut.uio_oe.value) == 0, f"Expected uio_oe=0, got {dut.uio_oe.value}"
 
-    # Wait for one clock cycle to see the output values
-    await ClockCycles(dut.clk, 1)
+    # uo_out and uio_out are both driven from the same out_bus signal
+    assert dut.uo_out.value.is_resolvable, f"uo_out has X/Z: {dut.uo_out.value}"
+    assert dut.uio_out.value.is_resolvable, f"uio_out has X/Z: {dut.uio_out.value}"
+    assert int(dut.uo_out.value) == int(dut.uio_out.value), (
+        f"Expected mirrored outputs, got uo_out={dut.uo_out.value}, uio_out={dut.uio_out.value}"
+    )
 
-    # The following assersion is just an example of how to check the output values.
-    # Change it to match the actual expected output of your module:
-    assert dut.uo_out.value == 50
+    # Drive a non-zero pattern and re-check mirrored outputs.
+    dut.ui_in.value = 0xA5
+    dut.uio_in.value = 0x3C
+    await ClockCycles(dut.clk, 5)
+    assert dut.uo_out.value.is_resolvable, f"uo_out has X/Z after stimulus: {dut.uo_out.value}"
+    assert dut.uio_out.value.is_resolvable, f"uio_out has X/Z after stimulus: {dut.uio_out.value}"
+    assert int(dut.uo_out.value) == int(dut.uio_out.value), (
+        f"Expected mirrored outputs after stimulus, got "
+        f"uo_out={dut.uo_out.value}, uio_out={dut.uio_out.value}"
+    )
 
-    # Keep testing the module by changing the input values, waiting for
-    # one or more clock cycles, and asserting the expected output values.
+    dut._log.info("Smoke test passed")

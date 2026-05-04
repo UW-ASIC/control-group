@@ -1,20 +1,18 @@
-<!---
-
-This file is used to generate your project datasheet. Please fill in the information below and delete any unused
-sections.
-
-You can also include images in this folder and reference them in the markdown. Each image must be less than
-512 kb in size, and the combined size of all images must be less than 1 MB.
--->
-
 ## How it works
 
-Explain how your project works
+This control module manages request and completion queues for SPI-based communication. It includes:
+- Request queue for incoming commands
+- Completion queue for completed operations
+- SPI for communication
+- AES and SHA FSM controllers for cryptographic operations
+- Bus arbiter for managing multi-source requests
 
 ## How to test
 
-Explain how to use your project
+- Run `make` in the test/ directory to execute all cocotb tests
+- Tests verify queue operations, SPI communication, and FSM functionality
+- Results are output to test/results.xml
 
 ## External hardware
 
-List external hardware used in your project (e.g. PMOD, LED display, etc), if any
+SPI Master/Host device for sending commands and receiving responses over MOSI/MISO lines
