@@ -21,12 +21,12 @@ module bus_arbiter #(
 localparam AES = 2'b01;
 localparam SHA = 2'b10;
 
-assign curr_mode_top = curr_mode;
-assign counter_top = counter;
-
 reg last_serviced; // RR to choose a FSM to service if both simultaneously req bus
 reg [1:0] curr_mode; // 00: Inactive, 01: AES, 10: SHA
 reg [1:0] counter;
+
+assign curr_mode_top = curr_mode;
+assign counter_top = counter;
 
 always @(*) begin
     if (counter == 2'b00) begin
