@@ -32,12 +32,15 @@ module req_queue #(
         end
     endfunction
 
-    initial begin
-        integer i;
-        $dumpfile("tb.vcd");
-        for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, aesQueue[i]);
-        for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, shaQueue[i]);
-    end
+    // integer i;
+    integer j, k;
+
+    // initial begin
+
+    //     $dumpfile("tb.vcd");
+    //     for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, aesQueue[i]);
+    //     for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, shaQueue[i]);
+    // end
 
     localparam integer SHA_INSTRW = 2 * ADDRW + OPCODEW;
     localparam integer AES_INSTRW = 3 * ADDRW + OPCODEW;
@@ -61,12 +64,11 @@ module req_queue #(
 
     always @(posedge clk or negedge rst_n) begin 
         if (!rst_n) begin
-            integer i;
-            for (i = 0; i < QDEPTH; i = i + 1) aesQueue[i] <= {AES_INSTRW{1'b0}};
+            for (j = 0; j < QDEPTH; j = j + 1) aesQueue[j] <= {AES_INSTRW{1'b0}};
             aesReadIdx <= {IDXW{1'b0}};
             aesWriteIdx <= {IDXW{1'b0}};
             aesFull <= 0;
-            for (i = 0; i < QDEPTH; i = i + 1) shaQueue[i] <= {SHA_INSTRW{1'b0}};
+            for (k = 0; k < QDEPTH; k = k + 1) shaQueue[k] <= {SHA_INSTRW{1'b0}};
             shaReadIdx <= {IDXW{1'b0}};
             shaWriteIdx <= {IDXW{1'b0}};
             shaFull <= 0;
@@ -75,8 +77,8 @@ module req_queue #(
                 if (ready_out_aes) begin
                     if (opcode[0] == 0) begin
                         aesQueue[aesWriteIdx] <= {opcode, key_addr, text_addr, dest_addr};
-                        aesWriteIdx <= (aesWriteIdx + 1) % QDEPTH;
-                        if (aesReadIdx == (aesWriteIdx + 1) % QDEPTH) begin
+                        aesWriteIdx <= (aesWriteIdx + 1);
+                        if (aesReadIdx == (aesWriteIdx + 1)) begin
                             aesFull <= 1;
                         end
                     end
@@ -84,18 +86,18 @@ module req_queue #(
                 if (ready_out_sha) begin
                     if (opcode[0] == 1) begin
                         shaQueue[shaWriteIdx] <= {opcode, text_addr, dest_addr};
-                        shaWriteIdx <= (shaWriteIdx + 1) % QDEPTH;
-                        if (shaReadIdx == (shaWriteIdx + 1) % QDEPTH) begin
+                        shaWriteIdx <= (shaWriteIdx + 1);
+                        if (shaReadIdx == (shaWriteIdx + 1)) begin
                             shaFull <= 1;
                         end
                     end
                 end
             end
-            if (ready_in_aes) begin
+            if (ready_in_aes && valid_out_aes) begin
                 aesReadIdx <= aesReadIdx + 1;
                 aesFull <= 0;
             end
-            if (ready_in_sha) begin
+            if (ready_in_sha && valid_out_sha) begin
                 shaReadIdx <= shaReadIdx + 1;
                 shaFull <= 0;
             end
