@@ -32,12 +32,15 @@ module req_queue #(
         end
     endfunction
 
-    initial begin
-        integer i;
-        $dumpfile("tb.vcd");
-        for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, aesQueue[i]);
-        for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, shaQueue[i]);
-    end
+    // integer i;
+    integer j, k;
+
+    // initial begin
+
+    //     $dumpfile("tb.vcd");
+    //     for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, aesQueue[i]);
+    //     for (i = 0; i < QDEPTH; i = i + 1) $dumpvars(0, shaQueue[i]);
+    // end
 
     localparam integer SHA_INSTRW = 2 * ADDRW + OPCODEW;
     localparam integer AES_INSTRW = 3 * ADDRW + OPCODEW;
@@ -70,12 +73,11 @@ module req_queue #(
 
     always @(posedge clk or negedge rst_n) begin 
         if (!rst_n) begin
-            integer i;
-            for (i = 0; i < QDEPTH; i = i + 1) aesQueue[i] <= {AES_INSTRW{1'b0}};
+            for (j = 0; j < QDEPTH; j = j + 1) aesQueue[j] <= {AES_INSTRW{1'b0}};
             aesReadIdx <= {IDXW{1'b0}};
             aesWriteIdx <= {IDXW{1'b0}};
             aesFull <= 0;
-            for (i = 0; i < QDEPTH; i = i + 1) shaQueue[i] <= {SHA_INSTRW{1'b0}};
+            for (k = 0; k < QDEPTH; k = k + 1) shaQueue[k] <= {SHA_INSTRW{1'b0}};
             shaReadIdx <= {IDXW{1'b0}};
             shaWriteIdx <= {IDXW{1'b0}};
             shaFull <= 0;

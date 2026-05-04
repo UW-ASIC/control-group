@@ -18,12 +18,10 @@ module comp_queue #(
 );
 
     // VCD dump for simulation
-`ifndef SYNTHESIS
-    initial begin
-        $dumpfile("tb.vcd");
-        $dumpvars(0, comp_queue);
-    end
-`endif
+    // initial begin
+    //     $dumpfile("tb.vcd");
+    //     $dumpvars(0, comp_queue);
+    // end
 
     // Internal FIFO
     reg [ADDRW-1:0] mem [0:QDEPTH-1];
@@ -67,7 +65,8 @@ module comp_queue #(
         ready_out_sha = !full;
     end
 
-    wire deq_valid = !empty;
+    wire do_enq = enq_valid && enq_ready;
+    wire do_deq = valid_out && ready_in;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -87,30 +86,34 @@ module comp_queue #(
 `endif
 
             // Enqueue logic
-            if (enq_valid && enq_ready) begin
+            if (do_enq) begin
                 mem[tail] <= enq_data;
-                // avoid modulo on mixed widths to prevent WIDTHTRUNC warnings
-                if (tail == LAST_IDX) tail <= {IDXW{1'b0}};
-                else tail <= tail + 1;
-                count <= count + 1;
+                tail <= (tail + 1);
             end
 
             // Toggle round-robin if both inputs are valid — regardless of enqueue
             if (both_valid)
                 rr_select <= ~rr_select;
 
-            // Dequeue logic
-            if (deq_valid && ready_in) begin
+            // Present next entry
+            if (!empty && !valid_out) begin
                 data_out <= mem[head];
-                if (head == LAST_IDX)       // (head + 1) % QDEPTH
-                    head <= {IDXW{1'b0}};
-                else 
-                    head <= head + 1;
-                count <= count - 1;
                 valid_out <= 1;
-            end else begin
+            end
+
+            // Dequeue on handshake
+            if (do_deq) begin
+                head <= (head + 1);
                 valid_out <= 0;
             end
+
+            // Count — handle simultaneous case explicitly
+            if (do_enq && do_deq)
+                count <= count;
+            else if (do_enq)
+                count <= count + 1;
+            else if (do_deq)
+                count <= count - 1;
         end
     end
 
