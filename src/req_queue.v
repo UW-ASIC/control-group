@@ -22,16 +22,6 @@ module req_queue #(
     output wire ready_out_sha
 );
 
-    function integer clog2;
-        input integer value;
-        integer v, i;
-        begin
-            v = value - 1;
-            for (i = 0; v > 0; i = i + 1) v = v >> 1;
-            clog2 = (value <= 1) ? 1 : i;
-        end
-    endfunction
-
     // integer i;
     integer j, k;
 
@@ -47,13 +37,7 @@ module req_queue #(
     // Calculate index and count widths based on QDEPTH 
     // Handles edge cases like QDEPTH <= 1, force min width to be 1
     localparam integer IDXW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH);
-    function [IDXW - 1:0] idx_const;
-        input integer value;
-        begin
-            idx_const = value[IDXW - 1:0];
-        end
-    endfunction
-    localparam [IDXW - 1:0] LAST_IDX = idx_const(QDEPTH - 1);
+    localparam [IDXW - 1:0] LAST_IDX = IDXW'(QDEPTH - 1);
 
     reg [AES_INSTRW - 1:0] aesQueue [QDEPTH - 1:0];
     reg [IDXW - 1:0] aesReadIdx;

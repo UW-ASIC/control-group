@@ -25,7 +25,7 @@ module deserializer #(
     localparam integer SHIFT_W = 1 + OPCODEW + (3 * ADDRW);
     // Bits needed to count from 0 to SHIFT_W-1
     localparam integer CW = $clog2(SHIFT_W + 1);
-    localparam [CW-1:0] CNT_FULL = SHIFT_W - 1;
+    localparam [CW-1:0] CNT_FULL = CW'(SHIFT_W) - 1;
 
     // synchronize
     reg [1:0] r_clk;

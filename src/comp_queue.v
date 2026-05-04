@@ -29,14 +29,13 @@ module comp_queue #(
     // Handles edge cases like QDEPTH <= 1, force min width to be 1
     localparam integer IDXW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH);
     localparam integer COUNTW = (QDEPTH <= 1) ? 1 : $clog2(QDEPTH + 1);
-    function [IDXW-1:0] idx_const;
-        input integer value;
-        begin
-            idx_const = value[IDXW-1:0];
-        end
-    endfunction
-    localparam [IDXW-1:0] LAST_IDX = idx_const(QDEPTH - 1);
+    localparam [IDXW-1:0] LAST_IDX = IDXW'(QDEPTH - 1);
     localparam [COUNTW-1:0] COUNT_MAX = QDEPTH;
+
+    function [IDXW-1:0] increment_ptr;
+        input [IDXW-1:0] val;
+        increment_ptr = (val == LAST_IDX) ? {IDXW{1'b0}} : val + 1'b1;
+    endfunction
     
     reg [IDXW-1:0] head, tail;
     reg [COUNTW-1:0] count;
@@ -88,7 +87,7 @@ module comp_queue #(
             // Enqueue logic
             if (do_enq) begin
                 mem[tail] <= enq_data;
-                tail <= (tail + 1);
+                tail <= increment_ptr(tail);
             end
 
             // Toggle round-robin if both inputs are valid — regardless of enqueue
@@ -103,7 +102,7 @@ module comp_queue #(
 
             // Dequeue on handshake
             if (do_deq) begin
-                head <= (head + 1);
+                head <= increment_ptr(head);
                 valid_out <= 0;
             end
 
