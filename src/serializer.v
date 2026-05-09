@@ -81,7 +81,7 @@ module serializer #(
             err         <= 1'b0;
         end
         else if (~valid_ncs) begin
-            if (valid_in && ready_out == 1 && negedgeSPI) begin
+            if (valid_in && ready_out) begin
                 PISOreg     <= {1'b1 , addr};
                 ready_out   <= 0;
                 cnt         <= CNT_INIT;
@@ -107,6 +107,7 @@ module serializer #(
             miso        <= 1'b0;
         end else begin
             err <= 1'b0;
+            //ready_out <= 0;
         end
     end
 
